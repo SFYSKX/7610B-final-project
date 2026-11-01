@@ -1,0 +1,17 @@
+node_modules/
+dist/
+artifacts/
+cache/
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+*.log
+public/deployments/*.json
+deployments/*.json
+deployments/*.lock
+deployments/*.tmp
+public/deployments/*.tmp
+reports/
+*.zip

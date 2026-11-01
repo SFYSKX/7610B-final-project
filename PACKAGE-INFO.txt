@@ -1,0 +1,26 @@
+Ledger Market - independently reproducible source distribution
+
+Start with README.md and docs/PROJECT_OVERVIEW.md before installing.
+The overview explains purpose, features, roles, workflows and implementation limits.
+Installation, accounts, local tests, Sepolia deployment, business rules,
+architecture and troubleshooting are documented in docs/.
+Use Node.js 22.x. Install dependencies with npm ci.
+
+No private environment file, personal wallet addresses, existing deployment
+manifests, runtime logs, IDE metadata, dependencies or build outputs are included.
+Configure your own RPC, deployer, settlement account and Safe for Sepolia.
+Local demo uses disposable node accounts and does not require private credentials.
+
+Source verification previously performed in an independent source copy:
+- Clean dependency installation succeeded.
+- 88 automated tests passed (37 contract, 46 client, 5 tooling).
+- Architecture check and production build passed.
+- Deployment, initialization, validation and the local business smoke test
+  passed on a separate node with newly generated accounts.
+No Sepolia transactions were submitted as part of this release verification.
+Temporary validation accounts and deployment state are excluded from this ZIP.
+This update changes documentation only. Source code is unchanged from that
+verified copy. Documentation links, npm commands, archive integrity and
+credential/personal-identifier screening were checked again for this archive.
+
+SHA256SUMS.txt contains file checksums, excluding itself.

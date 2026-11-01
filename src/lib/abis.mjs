@@ -1,0 +1,2 @@
+import Market from '../contracts/Marketplace.json';import Auction from '../contracts/AuctionHouse.json';import Reserve from '../contracts/RiskReserve.json';import Router from '../contracts/FeeRouter.json';import NFT from '../contracts/DemoNFT.json';import Council from '../contracts/LocalCouncil.json';
+export const ABIS={Marketplace:Market.abi,AuctionHouse:Auction.abi,RiskReserve:Reserve.abi,FeeRouter:Router.abi,DemoNFT:NFT.abi,LocalCouncil:Council.abi};

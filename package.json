@@ -1,0 +1,46 @@
+{
+  "name": "nft-market-reserve",
+  "version": "2.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "chain": "hardhat --config hardhat.local.config.cjs node --hostname 127.0.0.1",
+    "compile": "hardhat compile && node scripts/export.cjs",
+    "deploy:local": "hardhat run scripts/deploy.cjs --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.cjs --network sepolia",
+    "deploy:test-assets": "hardhat run scripts/assets.cjs --network localhost",
+    "deploy:test-assets:sepolia": "hardhat run scripts/assets.cjs --network sepolia",
+    "mint:sepolia": "hardhat run scripts/mint.cjs --network sepolia",
+    "seed:local": "hardhat run scripts/seed.cjs --network localhost",
+    "validate:deployment": "hardhat run scripts/validate.cjs --network localhost",
+    "validate:sepolia": "hardhat run scripts/validate.cjs --network sepolia",
+    "dev": "vite --host 127.0.0.1",
+    "demo": "node scripts/demo.cjs",
+    "build": "npm run compile && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test:contract": "hardhat test",
+    "test:client": "node --test test-client/*.test.mjs",
+    "test": "npm run check:architecture && npm run test:contract && npm run test:client && npm run test:tooling",
+    "smoke:local": "hardhat run scripts/smoke.cjs --network localhost",
+    "gas:report": "hardhat run scripts/gas.cjs",
+    "test:tooling": "node --test test-tooling/*.test.cjs",
+    "settle:local": "node scripts/settler.cjs --local",
+    "settle:sepolia": "node scripts/settler.cjs --sepolia",
+    "demo:v2": "node scripts/demo.cjs --isolated",
+    "check:architecture": "node scripts/check-architecture.cjs"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.0.2",
+    "ethers": "6.15.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "3.1.0",
+    "hardhat": "2.26.3",
+    "solc": "0.8.24",
+    "vite": "7.1.0"
+  }
+}

@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {address,amount,integer,csvCell,uniqueLogs,createGate,createRefresh,recoverReceipt} from '../src/lib/control.mjs';
+test('strict wei inputs reject floats/exponents/zero and excess decimals',()=>{assert.equal(amount('0.01'),10n**16n);for(const x of ['0','-1','1e2','1.0000000000000000001','NaN'])assert.throws(()=>amount(x));});
+test('addresses and integer bounds validated',()=>{assert.throws(()=>address('0x0000000000000000000000000000000000000000'));assert.throws(()=>integer('1.2'));assert.throws(()=>integer('0',{min:1n}));assert.equal(integer('12'),12n);});
+test('CSV formula and quotes escaped',()=>{assert.equal(csvCell('=1+1'),'"\'=1+1"');assert.equal(csvCell('a"b'),'"a""b"');});
+test('log identities de-duplicate without combining separate events',()=>{const l={address:'x',transactionHash:'y',index:1,blockNumber:2,transactionIndex:0};assert.equal(uniqueLogs([l,l,{...l,index:2}]).length,2);});
+test('gate blocks duplicate submissions and releases after failure',async()=>{const g=createGate();let release;const p=g.run(()=>new Promise(r=>release=r));await assert.rejects(g.run(()=>1));release();await p;await assert.rejects(g.run(()=>{throw Error('x');}));assert.equal(g.busy,false);});
+test('stopped refresh does not paint old-account data',async()=>{let release,painted=false;const c=createRefresh(()=>new Promise(r=>release=r),()=>painted=true,()=>{});const p=c.request();c.stop();release(1);await p;assert.equal(painted,false);});
+test('receipt absence is pending, not failure',()=>{assert.equal(recoverReceipt(null),'pending');assert.equal(recoverReceipt({status:1}),'success');assert.equal(recoverReceipt({status:0}),'reverted');});
