@@ -8,10 +8,9 @@ cache/
 .idea/
 .vscode/
 *.log
-public/deployments/*.json
-deployments/*.json
-deployments/*.lock
-deployments/*.tmp
-public/deployments/*.tmp
+public/deployments/**
+!public/deployments/.gitkeep
+deployments/**
+!deployments/.gitkeep
 reports/
 *.zip
