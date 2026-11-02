@@ -26,6 +26,7 @@ App / 会话与导航
 | `src/services/history.mjs` | 分页事件扫描与交易分类 |
 | `src/features/registry.jsx` | 功能组件、导航、权限和数据依赖声明 |
 | `src/components/FeatureHost.jsx` | 依赖未就绪时限制相关功能 |
+| `src/features/admin/AdminCharts.jsx` | 管理员图表；按最新快照展示最近 40 条挂牌/拍卖状态与准备金、待归集费用 |
 | `src/components/ModuleBoundary.jsx` | 页面组件错误边界与重试 |
 | `src/lib/` | ABI、格式化、校验、错误翻译和业务预检 |
 | `contracts/` | 权限、托管、资金隔离和业务状态机 |
