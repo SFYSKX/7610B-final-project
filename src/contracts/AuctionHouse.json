@@ -23,6 +23,16 @@
       "type": "error"
     },
     {
+      "inputs": [],
+      "name": "BatchLengthMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidBatchSize",
+      "type": "error"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
@@ -377,6 +387,19 @@
     {
       "inputs": [],
       "name": "API_VERSION",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "MAX_ADMIN_BATCH",
       "outputs": [
         {
           "internalType": "uint256",
@@ -824,6 +847,24 @@
     {
       "inputs": [
         {
+          "internalType": "address[]",
+          "name": "collections",
+          "type": "address[]"
+        },
+        {
+          "internalType": "bool[]",
+          "name": "allowed",
+          "type": "bool[]"
+        }
+      ],
+      "name": "setCollections",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "uint256",
           "name": "bps",
           "type": "uint256"
@@ -879,6 +920,29 @@
         }
       ],
       "name": "setTokenBlocked",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "collection",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "tokenIds",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "bool",
+          "name": "blocked",
+          "type": "bool"
+        }
+      ],
+      "name": "setTokensBlocked",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

@@ -7,6 +7,10 @@ import {Form,TxLink,State,Empty,f,download} from '../../components/common.jsx';
 import AdminCharts from './AdminCharts.jsx';
 
 const adminActions={
+ ...Object.fromEntries([['market','市场','Marketplace'],['auction','拍卖','AuctionHouse']].flatMap(([key,label,target])=>[
+ [key+'TokensBatch',{label:label+'：批量禁用或恢复 NFT',target,method:'setTokensBlocked',fields:[f('collection','NFT 集合地址'),f('tokens','Token ID 列表（逗号分隔，最多 100 项）'),f('blocked','禁用 true / 恢复 false','true')],args:v=>[address(v.collection),batchList(v.tokens,tokenId),boolean(v.blocked)]}],
+ [key+'CollectionsBatch',{label:label+'：批量启用或停用集合',target,method:'setCollections',fields:[f('collections','集合地址列表（逗号分隔，最多 100 项）'),f('enabled','启用 true / false','true')],args:v=>{const items=batchList(v.collections,address);return [items,items.map(()=>boolean(v.enabled))];}}]
+ ])),
   marketToken:{label:'市场：禁用或恢复单件 NFT',target:'Marketplace',method:'setTokenBlocked',fields:[f('collection','NFT 集合地址'),f('token','Token ID'),f('blocked','禁用 true / 恢复 false','true')],args:v=>[address(v.collection),tokenId(v.token),boolean(v.blocked)]},
   auctionToken:{label:'拍卖：禁用或恢复单件 NFT',target:'AuctionHouse',method:'setTokenBlocked',fields:[f('collection','NFT 集合地址'),f('token','Token ID'),f('blocked','禁用 true / 恢复 false','true')],args:v=>[address(v.collection),tokenId(v.token),boolean(v.blocked)]},
   keeper:{label:'拍卖：设置专用自动结算账户',target:'AuctionHouse',method:'setSettlementKeeper',fields:[f('keeper','专用结算账户地址')],args:v=>[address(v.keeper)]},
@@ -31,6 +35,14 @@ const adminActions={
   approve:{label:'准备金：批准申请',target:'RiskReserve',method:'approveClaim',fields:[f('claim','权益 / 申请 ID'),f('amount','批准金额 ETH','0.01')],args:v=>[integer(v.claim,{min:1n}),amount(v.amount)]},
   reject:{label:'准备金：拒绝申请',target:'RiskReserve',method:'rejectClaim',fields:[f('claim','申请 ID'),f('reason','拒绝理由（计算 hash）')],args:v=>[integer(v.claim,{min:1n}),id(v.reason)]}
 };
+
+function batchList(value, parse) {
+  const items = value.split(/[,，\s]+/).filter(Boolean).map(item => parse(item));
+  if (!items.length || items.length > 100) throw Error('每批需要 1–100 项');
+  const uniqueItems = new Set(items.map(item => String(item).toLowerCase()));
+  if (uniqueItems.size !== items.length) throw Error('批次中不能包含重复项');
+  return items;
+}
 
 function boolean(value){
   if(!['true','false'].includes(value))throw Error('请输入 true 或 false');
@@ -74,6 +86,7 @@ export default function Admin({s,data,tx,guarded,disabled}){
     </section>
 
     <AdminCharts data={data}/>
+    <p className="muted">批量操作最多 100 项，同一批次只需一次多签提案；任何一项失败将整批回滚。批量功能需要支持批量接口的新部署，旧合约不支持。</p>
 
     <section className="panel admin-management-panel">
       <div className="section-head"><div><span className="eyebrow">MANAGEMENT ACTIONS</span><h2>管理操作</h2></div><span className="badge">预览后再提交</span></div>

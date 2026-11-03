@@ -9,6 +9,25 @@ interface IFeeRouter { function depositFees() external payable; }
 abstract contract MarketBase is AdminAccess, ReentrancyGuard, IERC721Receiver {
     uint256 public constant API_VERSION = 2;
     uint256 public constant MAX_FEE_BPS = 500;
+    uint256 public constant MAX_ADMIN_BATCH = 100;
+    error InvalidBatchSize();
+    error BatchLengthMismatch();
+    function _checkBatch(uint256 length) private pure {
+        if (length == 0 || length > MAX_ADMIN_BATCH) revert InvalidBatchSize();
+    }
+    function setTokensBlocked(address collection, uint256[] calldata tokenIds, bool blocked) external onlyOwner {
+        _checkBatch(tokenIds.length);
+        require(collection.code.length > 0, "Invalid collection");
+        for (uint256 i; i < tokenIds.length; ++i) {
+            blockedTokens[collection][tokenIds[i]] = blocked;
+            emit TokenConfigured(collection, tokenIds[i], blocked);
+        }
+    }
+    function setCollections(address[] calldata collections, bool[] calldata allowed) external onlyOwner {
+        _checkBatch(collections.length);
+        if (collections.length != allowed.length) revert BatchLengthMismatch();
+        for (uint256 i; i < collections.length; ++i) _setCollection(collections[i], allowed[i]);
+    }
     address public immutable feeRouter;
     uint256 public feeBps = 100;
     bool public paused;
@@ -35,6 +54,9 @@ abstract contract MarketBase is AdminAccess, ReentrancyGuard, IERC721Receiver {
     }
     modifier live() { require(!paused, "New business paused"); _; }
     function setCollection(address collection, bool allowed) external onlyOwner {
+        _setCollection(collection, allowed);
+    }
+    function _setCollection(address collection, bool allowed) private {
         require(collection.code.length > 0, "Invalid collection");
         if (allowed) require(IERC721(collection).supportsInterface(type(IERC721).interfaceId), "Not ERC721");
         allowedCollections[collection] = allowed; emit CollectionConfigured(collection, allowed);
