@@ -1,3 +1,4 @@
+import NFTDetails from '../../components/NFTDetails.jsx';
 import React from 'react';
 import {eth,short,same} from '../../lib/format.mjs';
 import {address,amount,integer,tokenId} from '../../lib/control.mjs';
@@ -6,7 +7,7 @@ import RecordLookup from '../../components/RecordLookup.jsx';
 
 export function AuctionCard({s,data,tx,guarded,disabled,v}){
  const a=s.contracts.AuctionHouse;
- return <article className="asset-card"><CardArt tokenId={v.tokenId} collection={v.collection}/><div className="card-body">
+ return <article className="asset-card"><NFTDetails s={s} tokenId={v.tokenId} collection={v.collection}/><div className="card-body">
   <h3>拍卖 #{String(v.id)} · NFT #{String(v.tokenId)}</h3><p className="muted">卖方 {short(v.seller)} · {date(v.endTime)}</p>
   <div className="price">{eth(v.highestBid||v.reservePrice)} <span>ETH</span></div>
   <p className="small">{v.highestBid>0n?'最高出价 '+short(v.highestBidder):'尚无出价 / 当前显示底价'}</p>

@@ -17,6 +17,7 @@ const PendingPanel=(await component('src/components/PendingPanel.jsx')).default;
 const FeatureHost=(await component('src/components/FeatureHost.jsx')).default;
 const DashboardStats=(await component('src/components/DashboardStats.jsx')).default;
 const AdminCharts=(await component('src/features/admin/AdminCharts.jsx')).default;
+const Admin=(await component('src/features/admin/Admin.jsx')).default;
 const {features,visibleFeatures}=await component('src/features/registry.jsx');
 const History=(await component('src/features/history/History.jsx')).default;
 const Inventory=(await component('src/features/assets/Inventory.jsx')).default;
@@ -26,6 +27,11 @@ const {default:Reserve,ClaimCard,IncidentRow}=await component('src/features/rese
 const RecordLookup=(await component('src/components/RecordLookup.jsx')).default;
 const account='0x0000000000000000000000000000000000000011',other='0x0000000000000000000000000000000000000022';
 function hooks(overrides={}){let i=0;globalThis.__ledgerHooks={useState:init=>[Object.hasOwn(overrides,i)?overrides[i++]:((i++),typeof init==='function'?init():init),()=>{}],useRef:v=>({current:v}),useEffect:()=>{}};}
+function elementText(node) {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(elementText).join('');
+  return node?.props ? elementText(node.props.children) : '';
+}
 function elements(tree){if(!tree||typeof tree!=='object')return [];if(Array.isArray(tree))return tree.flatMap(elements);return [tree,...elements(tree.props?.children)];}
 const s={account,chainId:31337,config:{collections:[],contracts:{Marketplace:account,AuctionHouse:other}},contracts:{AuctionHouse:{},RiskReserve:{}}};
 function common(){const calls=[];return {s,data:{time:1000,pausedA:false,pausedR:false},disabled:false,guarded:fn=>fn(),tx:(...args)=>calls.push(args),calls};}
@@ -79,8 +85,8 @@ test('approval status renders per-market revoke and combined revoke controls',()
  const p=common();p.s={...s,provider:{}};
  hooks({0:account,1:'1',3:{status:'ready',key:account.toLowerCase()+':1',owner:account,approved:account,market:true,auction:true,marketSingle:true,auctionSingle:false,marketAll:true,auctionAll:true,singleLabel:'交易市场 Marketplace',block:7}});
  const tree=NFTApproval({...p,defaultCollection:account}),buttons=elements(tree).filter(x=>x.type==='button');
- assert.ok(buttons.some(x=>x.props.children==='取消交易市场授权'));
- assert.ok(buttons.some(x=>x.props.children==='取消拍卖市场授权'));
+ assert.ok(buttons.some(x=>elementText(x)==='取消交易市场授权'));
+ assert.ok(buttons.some(x=>elementText(x)==='取消拍卖市场授权'));
  assert.ok(buttons.some(x=>x.props.children==='一键取消两个市场授权'));
  assert.match(renderToStaticMarkup(tree),/该集合全部 NFT 授权/);
 });
@@ -99,7 +105,7 @@ test('already-authorized target and non-owner cannot issue another approval',()=
  for(const status of [{owner:account,market:true,auction:false},{owner:other,market:true,auction:false}]){
   const p=common();p.s={...s,provider:{}};hooks({0:account,1:'1',3:{status:'ready',key:account.toLowerCase()+':1',singleLabel:'交易市场 Marketplace',block:7,...status}});
   const tree=NFTApproval({...p,defaultCollection:account});const button=elements(tree).find(x=>x.type==='button'&&x.props.type==='submit');assert.equal(button.props.disabled,true);
-  const revoke=elements(tree).find(x=>x.type==='button'&&x.props.children==='取消交易市场授权');if(status.owner!==account)assert.equal(revoke.props.disabled,true);
+  const revoke=elements(tree).find(x=>x.type==='button'&&elementText(x)==='取消交易市场授权');if(status.owner!==account)assert.equal(revoke.props.disabled,true);
   assert.throws(()=>elements(tree).find(x=>x.type==='form').props.onSubmit({preventDefault(){}}));assert.equal(p.calls.length,0);
  }
 });
@@ -142,4 +148,41 @@ test('lookup discards an asynchronous response after account change',async()=>{
  let tree=render();elements(tree).find(x=>x.props?.submit==='按 ID 查询').props.onSubmit({id:'1'});render();await Promise.resolve();
  props.s={...s,account:other};render();resolve({state:3n});await new Promise(r=>setImmediate(r));tree=render();
  assert.equal(elements(tree).some(x=>typeof x.props?.children==='string'&&x.props.children.startsWith('record ')),false);
+});
+
+const NFTDetails=(await component('src/components/NFTDetails.jsx')).default;
+test('NFT details render image, escaped description, traits and full identity',()=>{
+ const session={...s,provider:{}},collection=account,token=0n,key='31337:'+collection+':0';
+ const value={name:'校园艺术',description:'<script>alert(1)</script>',image:'https://example.org/art.png',attributes:[{trait:'颜色',value:'蓝'}],uri:'https://example.org/0.json'};
+ hooks({0:{key,value,session}});const html=renderToStaticMarkup(React.createElement(NFTDetails,{s:session,collection,tokenId:token}));
+ assert.match(html,/校园艺术/);assert.match(html,/art.png/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);assert.match(html,/颜色/);assert.match(html,/Token ID/);assert.match(html,/no-referrer/);
+});
+test('NFT details discard other-session data and expose retry after metadata failure',()=>{
+ const session={...s,provider:{}},key='31337:'+account+':1';
+ hooks({0:{key,value:{name:'STALE'},session:{...session}}});let html=renderToStaticMarkup(React.createElement(NFTDetails,{s:session,collection:account,tokenId:1}));assert.doesNotMatch(html,/STALE/);assert.match(html,/正在加载/);
+ hooks({0:{key,error:true,session}});html=renderToStaticMarkup(React.createElement(NFTDetails,{s:session,collection:account,tokenId:1}));assert.match(html,/重试/);assert.match(html,/暂时无法读取/);
+});
+test('failed NFT images fall back without hiding details',()=>{
+ const session={...s,provider:{}},key='31337:'+account+':1',value={name:'Test',description:'Description',image:'https://example.org/broken.png',attributes:[],uri:''};
+ hooks({0:{key,value,session},2:value.image});const html=renderToStaticMarkup(React.createElement(NFTDetails,{s:session,collection:account,tokenId:1}));assert.doesNotMatch(html,/<img/);assert.match(html,/图片加载失败/);assert.match(html,/Description/);
+});
+
+test('merged admin page retains charts, original actions and all four batch actions', () => {
+  hooks();
+  const props = common();
+  props.data = {
+    ...props.data, isAdmin: true, block: 1, listings: [], auctions: [],
+    rb: 0n, available: 0n, reserved: 0n, mp: 0n, ap: 0n, rr: 0n, tr: 0n,
+    binding: account
+  };
+  const tree = Admin(props);
+  const options = elements(tree).filter(node => node.type === 'option');
+  for (const key of ['marketTokensBatch', 'auctionTokensBatch',
+    'marketCollectionsBatch', 'auctionCollectionsBatch', 'marketToken',
+    'auctionToken', 'incident', 'approve', 'reject']) {
+    assert.ok(options.some(option => option.props.value === key), key);
+  }
+  const html = renderToStaticMarkup(tree);
+  assert.match(html, /准备金资金结构/);
+  assert.match(html, /手续费归集/);
 });
