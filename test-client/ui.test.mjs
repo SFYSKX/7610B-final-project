@@ -16,6 +16,7 @@ async function component(file){
 const PendingPanel=(await component('src/components/PendingPanel.jsx')).default;
 const FeatureHost=(await component('src/components/FeatureHost.jsx')).default;
 const DashboardStats=(await component('src/components/DashboardStats.jsx')).default;
+const AdminCharts=(await component('src/features/admin/AdminCharts.jsx')).default;
 const {features,visibleFeatures}=await component('src/features/registry.jsx');
 const History=(await component('src/features/history/History.jsx')).default;
 const Inventory=(await component('src/features/assets/Inventory.jsx')).default;
@@ -45,6 +46,14 @@ test('dashboard never renders unreadable balances as zero or claims an unknown r
  const html=renderToStaticMarkup(React.createElement(DashboardStats,{data:{isAdmin:false,modules:{},counts:{}}}));
  assert.match(html,/身份待核验/);assert.match(html,/暂不可用/);assert.doesNotMatch(html,/0\.0|<strong>交易用户/);
 });
+
+test('admin charts use on-chain snapshot values and label the bounded activity sample',()=>{
+ const data={block:88,time:1000,listings:[{status:1,expiresAt:1200},{status:2,expiresAt:900},{status:1,expiresAt:900},{status:3,expiresAt:800}],auctions:[{status:1,endTime:1200},{status:1,endTime:900},{status:2,endTime:800}],rb:10n**18n,available:6n*10n**17n,reserved:4n*10n**17n,mp:1n*10n**16n,ap:2n*10n**16n,rr:3n*10n**16n,tr:4n*10n**16n};
+ const html=renderToStaticMarkup(React.createElement(AdminCharts,{data}));
+ assert.match(html,/业务状态分布/);assert.match(html,/准备金资金结构/);assert.match(html,/待归集手续费/);
+ assert.match(html,/最近最多 40 条链上记录/);assert.match(html,/区块 #88/);
+ assert.match(html,/有效挂牌/);assert.match(html,/待结算拍卖/);assert.match(html,/60\.0%/);
+});
 test('nonempty history renders addresses and CSV without ReferenceError',()=>{hooks({1:{from:1,to:2,next:null,rows:[{key:'log',time:1,kind:'铸造',block:1,from:account,to:other,hash:'0xabc',price:''}]}});const html=renderToStaticMarkup(React.createElement(History,{s,guarded:fn=>fn()}));assert.match(html,/导出 CSV/);assert.match(html,/0x0000/);});
 test('ERC721 token IDs accept zero and uint256; business IDs still require one',()=>{assert.equal(tokenId('0'),0n);assert.equal(tokenId(String((1n<<256n)-1n)),(1n<<256n)-1n);for(const value of ['-1','1.2','1e3',String(1n<<256n)])assert.throws(()=>tokenId(value));assert.throws(()=>integer('0',{min:1n}));});
 test('asset and auction forms pass token zero to their actual transaction handlers',()=>{
@@ -66,10 +75,31 @@ test('approval form names both destinations and submits the chosen AuctionHouse 
  assert.match(html,/交易市场 Marketplace/);assert.match(html,/拍卖市场 AuctionHouse/);assert.match(html,/授权给拍卖市场 AuctionHouse/);
  elements(tree).find(x=>x.type==='form').props.onSubmit({preventDefault(){}});assert.deepEqual(p.calls[0][3],[other,1n]);
 });
+test('approval status renders per-market revoke and combined revoke controls',()=>{
+ const p=common();p.s={...s,provider:{}};
+ hooks({0:account,1:'1',3:{status:'ready',key:account.toLowerCase()+':1',owner:account,approved:account,market:true,auction:true,marketSingle:true,auctionSingle:false,marketAll:true,auctionAll:true,singleLabel:'交易市场 Marketplace',block:7}});
+ const tree=NFTApproval({...p,defaultCollection:account}),buttons=elements(tree).filter(x=>x.type==='button');
+ assert.ok(buttons.some(x=>x.props.children==='取消交易市场授权'));
+ assert.ok(buttons.some(x=>x.props.children==='取消拍卖市场授权'));
+ assert.ok(buttons.some(x=>x.props.children==='一键取消两个市场授权'));
+ assert.match(renderToStaticMarkup(tree),/该集合全部 NFT 授权/);
+});
+test('bulk revoke sends all applicable ERC721 cancellation calls in sequence',async()=>{
+ const p=common();p.s={...s,provider:{}};p.tx=(...args)=>{p.calls.push(args);return {hash:'0xconfirmed'};};
+ hooks({0:account,1:'1',3:{status:'ready',key:account.toLowerCase()+':1',owner:account,approved:account,market:true,auction:true,marketSingle:true,auctionSingle:false,marketAll:true,auctionAll:true,singleLabel:'交易市场 Marketplace',block:7}});
+ const tree=NFTApproval({...p,defaultCollection:account});
+ await elements(tree).find(x=>x.type==='button'&&x.props.children==='一键取消两个市场授权').props.onClick();
+ assert.deepEqual(p.calls.map(x=>[x[2],x[3]]),[
+  ['approve',[require('ethers').ZeroAddress,1n]],
+  ['setApprovalForAll',[account,false]],
+  ['setApprovalForAll',[other,false]]
+ ]);
+});
 test('already-authorized target and non-owner cannot issue another approval',()=>{
- for(const status of [{owner:account,market:true,auction:false},{owner:other,market:false,auction:false}]){
+ for(const status of [{owner:account,market:true,auction:false},{owner:other,market:true,auction:false}]){
   const p=common();p.s={...s,provider:{}};hooks({0:account,1:'1',3:{status:'ready',key:account.toLowerCase()+':1',singleLabel:'交易市场 Marketplace',block:7,...status}});
   const tree=NFTApproval({...p,defaultCollection:account});const button=elements(tree).find(x=>x.type==='button'&&x.props.type==='submit');assert.equal(button.props.disabled,true);
+  const revoke=elements(tree).find(x=>x.type==='button'&&x.props.children==='取消交易市场授权');if(status.owner!==account)assert.equal(revoke.props.disabled,true);
   assert.throws(()=>elements(tree).find(x=>x.type==='form').props.onSubmit({preventDefault(){}}));assert.equal(p.calls.length,0);
  }
 });

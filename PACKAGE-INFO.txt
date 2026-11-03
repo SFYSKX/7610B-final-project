@@ -10,17 +10,24 @@ blank environment template and empty deployment directories.
 Excluded: personal credentials and addresses, existing deployments and archives,
 Git/IDE metadata, node_modules, build output, runtime logs and service checkpoints.
 
-This release adds explicit missing/invalid deployment configuration guidance,
-including the development server's HTML fallback, and recursive deployment
-ignores. Business contracts and their permissions are unchanged.
+This revision improves the React front end, normalizes action-button alignment
+across transaction forms, cards and responsive layouts, and adds an administrator
+dashboard with snapshot-based business, reserve and fee-routing charts. Chart
+labels explicitly distinguish the latest bounded record sample from full history.
+This follow-up adds ERC-721 authorization revocation in the asset page: per-market
+cancellation, one-click cancellation for both platform markets, explicit handling
+of token-specific approval and collection-wide operator approval, and a fresh
+on-chain status read after successful cancellation. Third-party token approvals
+are not cleared. Solidity contracts and their permission rules remain unchanged.
 
-Verification in a clean independent copy using Node.js 22:
-- npm ci succeeded.
-- 96 tests passed: 37 contract/deployment, 54 client, 5 tooling.
-- Architecture check and production build passed.
-- ZIP contents, checksums, documentation links and npm commands checked.
-- Known credentials and personal identifiers screened without printing secrets.
-No public-chain transactions were sent for this release. Recipients must verify
-their own Sepolia deployment and initialize it through their own Safe.
+Verification for this revision:
+- JavaScript module syntax and JSX syntax were checked with Node.js and the
+  TypeScript transpiler.
+- Added client tests cover per-market and combined ERC-721 revocation plans.
+- The dependency installation command timed out because the npm registry was
+  unreachable in this environment; the full npm test suite and Vite production
+  build could not be executed here. Run `npm ci`, `npm test` and `npm run build`
+  with registry access before deployment.
+- No public-chain transactions were sent for this revision.
 
 SHA256SUMS.txt contains file checksums, excluding itself.

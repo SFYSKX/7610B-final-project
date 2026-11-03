@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ZeroAddress} from 'ethers';
-import {approvalTarget,approvalRights,readNFTApproval} from '../src/lib/approval.mjs';
+import {approvalTarget,approvalRights,approvalRevocationActions,readNFTApproval} from '../src/lib/approval.mjs';
 const market='0x0000000000000000000000000000000000000011',auction='0x0000000000000000000000000000000000000022',owner='0x0000000000000000000000000000000000000033';
 const config={Marketplace:market,AuctionHouse:auction};
 test('named approval targets map only to the two configured platform contracts',()=>{assert.equal(approvalTarget('Marketplace',config),market);assert.equal(approvalTarget('AuctionHouse',config),auction);for(const value of ['other',market,'constructor'])assert.throws(()=>approvalTarget(value,config));});
@@ -16,3 +16,19 @@ test('authorization reads use one block, support token zero and query operators 
  assert.deepEqual(calls,[['owner',0n,{blockTag:42}],['single',0n,{blockTag:42}],['operator',owner,market,{blockTag:42}],['operator',owner,auction,{blockTag:42}]]);
 });
 test('RPC authorization failures remain errors rather than false not-authorized results',async()=>{await assert.rejects(readNFTApproval({ownerOf:async()=>owner,getApproved:async()=>{throw Error('RPC unavailable');},isApprovedForAll:async()=>false},1,config,4),/RPC unavailable/);});
+
+
+test('revocation plan clears token approvals and collection-wide operators independently',()=>{
+ const both={marketSingle:true,auctionSingle:false,marketAll:true,auctionAll:true};
+ const actions=approvalRevocationActions(both,config,'0');
+ assert.deepEqual(actions.map(({target,scope,method,args})=>({target,scope,method,args})),[
+  {target:'Marketplace',scope:'single',method:'approve',args:[ZeroAddress,0n]},
+  {target:'Marketplace',scope:'all',method:'setApprovalForAll',args:[market,false]},
+  {target:'AuctionHouse',scope:'all',method:'setApprovalForAll',args:[auction,false]}
+ ]);
+ assert.deepEqual(approvalRevocationActions({marketSingle:false,auctionSingle:true,marketAll:false,auctionAll:false},config,9).map(a=>[a.target,a.method,a.args]),[['AuctionHouse','approve',[ZeroAddress,9n]]]);
+});
+test('revocation plan does not touch a third-party single approval or already-revoked targets',()=>{
+ assert.deepEqual(approvalRevocationActions({marketSingle:false,auctionSingle:false,marketAll:false,auctionAll:false,approved:owner},config,1),[]);
+ assert.deepEqual(approvalRevocationActions({marketSingle:false,auctionSingle:false,marketAll:true,auctionAll:false},config,1).map(a=>[a.target,a.method]),[['Marketplace','setApprovalForAll']]);
+});
