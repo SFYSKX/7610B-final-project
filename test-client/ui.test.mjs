@@ -113,3 +113,20 @@ test('lookup discards an asynchronous response after account change',async()=>{
  props.s={...s,account:other};render();resolve({state:3n});await new Promise(r=>setImmediate(r));tree=render();
  assert.equal(elements(tree).some(x=>typeof x.props?.children==='string'&&x.props.children.startsWith('record ')),false);
 });
+
+const NFTDetails=(await component('src/components/NFTDetails.jsx')).default;
+test('NFT details render image, escaped description, traits and full identity',()=>{
+ const session={...s,provider:{}},collection=account,token=0n,key='31337:'+collection+':0';
+ const value={name:'校园艺术',description:'<script>alert(1)</script>',image:'https://example.org/art.png',attributes:[{trait:'颜色',value:'蓝'}],uri:'https://example.org/0.json'};
+ hooks({0:{key,value,session}});const html=renderToStaticMarkup(React.createElement(NFTDetails,{s:session,collection,tokenId:token}));
+ assert.match(html,/校园艺术/);assert.match(html,/art.png/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);assert.match(html,/颜色/);assert.match(html,/Token ID/);assert.match(html,/no-referrer/);
+});
+test('NFT details discard other-session data and expose retry after metadata failure',()=>{
+ const session={...s,provider:{}},key='31337:'+account+':1';
+ hooks({0:{key,value:{name:'STALE'},session:{...session}}});let html=renderToStaticMarkup(React.createElement(NFTDetails,{s:session,collection:account,tokenId:1}));assert.doesNotMatch(html,/STALE/);assert.match(html,/正在加载/);
+ hooks({0:{key,error:true,session}});html=renderToStaticMarkup(React.createElement(NFTDetails,{s:session,collection:account,tokenId:1}));assert.match(html,/重试/);assert.match(html,/暂时无法读取/);
+});
+test('failed NFT images fall back without hiding details',()=>{
+ const session={...s,provider:{}},key='31337:'+account+':1',value={name:'Test',description:'Description',image:'https://example.org/broken.png',attributes:[],uri:''};
+ hooks({0:{key,value,session},2:value.image});const html=renderToStaticMarkup(React.createElement(NFTDetails,{s:session,collection:account,tokenId:1}));assert.doesNotMatch(html,/<img/);assert.match(html,/图片加载失败/);assert.match(html,/Description/);
+});
