@@ -23,7 +23,7 @@ const adminActions={
   auctionPause:{label:'拍卖：暂停创建与出价',target:'AuctionHouse',method:'setPaused',fields:[f('paused','暂停 true / false','true')],args:v=>[boolean(v.paused)]},
   reservePause:{label:'准备金：暂停新增风险',target:'RiskReserve',method:'setPaused',fields:[f('paused','暂停 true / false','true')],args:v=>[boolean(v.paused)]},
   bind:{label:'路由：一次性绑定准备金',target:'FeeRouter',method:'setReserveOnce',fields:[f('reserve','准备金地址')],args:v=>[address(v.reserve)]},
-  incident:{label:'准备金：登记事故预算',target:'RiskReserve',method:'openIncident',fields:[f('policy','政策正文或说明（计算 hash）'),f('budget','事故预算 ETH（不得超过当前可分配余额）',''),f('claim','申请窗口分钟','60'),f('review','审核窗口分钟（大于申请窗口）','120')],args:(v,d)=>{
+  incident:{label:'准备金：登记事故预算',target:'RiskReserve',method:'openIncident',fields:[f('policy','政策正文或说明'),f('budget','事故预算 ETH',''),f('claim','申请窗口分钟','60'),f('review','审核窗口分钟','120')],args:(v,d)=>{
     const claim=integer(v.claim,{min:1n,max:500000n});
     const review=integer(v.review,{min:1n,max:525600n});
     if(!v.policy.trim())throw Error('请填写政策说明');

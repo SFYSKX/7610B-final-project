@@ -26,14 +26,13 @@ export default function NFTApproval({s,data,selected,defaultCollection,tx,guarde
  const granted=current&&(kind==='Marketplace'?state.market:state.auction);
  const nftAddress=(()=>{try{return address(collection);}catch{return null;}})();
  const revokeActions=current?approvalRevocationActions(state,s.config.contracts,token):[];
- const marketGranted=current&&state.market,auctionGranted=current&&state.auction;
  function submit(e){e.preventDefault();return guarded(()=>{
   if(!current)throw Error('请先查询并确认这件 NFT 的链上授权状态');
   if(!owned)throw Error('当前账户不是这件 NFT 的持有人');
   if(granted)throw Error(label+' 已获授权，无需重复提交');
   return tx('授权 NFT',new Contract(nftAddress,ABIS.DemoNFT,s.provider),'approve',[approvalTarget(kind,s.config.contracts),tokenId(token)]);
  });}
- async function runRevocations(actions,successMessage){
+ async function runRevocations(actions){
   if(!current)throw Error('请先查询并确认这件 NFT 的链上授权状态');
   if(!owned)throw Error('当前账户不是这件 NFT 的持有人，无法撤销该授权');
   if(!actions.length)throw Error('当前没有需要取消的平台授权');
@@ -49,14 +48,11 @@ export default function NFTApproval({s,data,selected,defaultCollection,tx,guarde
     return;
    }
   }
-  setActionNote(successMessage);
+
   setReload(n=>n+1);
  }
  function revokeTarget(targetKind){
-  return guarded(()=>runRevocations(revokeActions.filter(action=>action.target===targetKind),APPROVAL_TARGETS[targetKind]+'授权已取消，正在重新读取链上状态。'));
- }
- function revokeBoth(){
-  return guarded(()=>runRevocations(revokeActions,'交易市场与拍卖市场的现有授权均已取消，正在重新读取链上状态。'));
+  return guarded(()=>runRevocations(revokeActions.filter(action=>action.target===targetKind)));
  }
  function permission(name,allowed,single,all,targetKind){
   const scopes=[];
@@ -89,10 +85,6 @@ export default function NFTApproval({s,data,selected,defaultCollection,tx,guarde
      {permission(APPROVAL_TARGETS.Marketplace,state.market,state.marketSingle,state.marketAll,'Marketplace')}
      {permission(APPROVAL_TARGETS.AuctionHouse,state.auction,state.auctionSingle,state.auctionAll,'AuctionHouse')}
     </div>
-    {(marketGranted||auctionGranted)&&<div className="approval-bulk-actions">
-     <button type="button" className="danger-button" disabled={disabled||!owned||!revokeActions.length} onClick={revokeBoth}>一键取消两个市场授权</button>
-     <small>会按链上实际状态依次撤销单件授权和全部 NFT 授权；每笔链上交易都需要在钱包中单独确认。</small>
-    </div>}
     <p className="small">当前单件授权：{state.singleLabel}{state.singleLabel==='其他合约或地址'&&<> · <code>{state.approved}</code></>} · 查询区块 {state.block}{state.refreshing?' · 更新中…':''}</p>
    </>}
    {actionNote&&<p className="approval-action-note" role="status">{actionNote}</p>}

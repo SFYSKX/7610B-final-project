@@ -417,10 +417,6 @@ summary { color: #5a7650; line-height: 1.8; cursor: pointer; }
 .approval-permission-top > strong { flex: 0 0 auto; }
 .approval-permission small { overflow-wrap: anywhere; }
 .approval-revoke { width: 100%; min-height: 36px; margin-top: 3px; white-space: normal; }
-.approval-bulk-actions { display: grid; gap: 7px; margin-top: 12px; padding: 13px; border: 1px solid #ead7cb; border-radius: 8px; background: #fffaf7; }
-.approval-bulk-actions small { line-height: 1.7; }
-button.danger-button { width: 100%; min-height: 40px; border-color: #d9a99a; background: #fff1ec; color: #8d3f32; box-shadow: none; }
-button.danger-button:hover:not(:disabled) { border-color: #bd7765; background: #fbe5de; color: #773326; }
 .approval-action-note { margin: 10px 0 0; padding: 10px 12px; border: 1px solid #d5e1c7; border-radius: 7px; background: #f2f7ed; color: #42613d; font-size: 12px; }
 .approval-status-heading { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .approval-status-heading h3 { margin-bottom: 0; }
@@ -439,3 +435,36 @@ button.danger-button:hover:not(:disabled) { border-color: #bd7765; background: #
 .nft-attributes>div{padding:8px;border:1px solid #ddd;border-radius:8px}
 .nft-attributes dt,.nft-identifiers dt{font-size:12px;color:#666}
 .nft-attributes dd,.nft-identifiers dd{margin:4px 0 12px;overflow-wrap:anywhere}
+
+/* Market and auction search, sorting and completed-trade exports. */
+.catalog-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 18px 0 22px; }
+.catalog-toolbar > label { min-width: 0; width: 220px; max-width: calc(50% - 8px); }
+.catalog-search-section { border-bottom: 1px solid var(--line); margin-bottom: 20px; padding-bottom: 2px; }
+.asset-creation-forms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; min-width: 0; }
+.asset-workflow > .panel .fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.claim-submission .fields { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end; }
+.auction-funds { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.auction-funds > p { margin: 0; }
+.journal-export-actions { display: flex; align-items: end; gap: 10px; flex: 0 0 auto; max-width: 100%; }
+.journal-export-actions label { width: 170px; min-width: 0; }
+.journal-export-actions button { flex: 0 0 auto; }
+.catalog-controls { margin: 18px 0 22px; }
+.catalog-fields { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)) auto; gap: 12px; align-items: end; }
+.catalog-controls > p { margin: 10px 0 0; }
+.trade-receipt { border-top: 1px solid var(--line); margin-top: 15px; padding-top: 14px; }
+.receipt-actions { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
+.receipt-actions label { flex: 1 1 120px; }
+.receipt-actions button { flex: 1 1 135px; }
+.trade-receipt > p { margin: 8px 0 0; overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  .catalog-fields, .claim-submission .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .asset-creation-forms { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+@media (max-width: 560px) {
+  .catalog-fields, .claim-submission .fields, .asset-workflow > .panel .fields { grid-template-columns: minmax(0, 1fr); }
+  .catalog-toolbar { gap: 10px; }
+  .catalog-toolbar > label { max-width: calc(50% - 5px); }
+  .catalog-toolbar select { padding-right: 4px; padding-left: 8px; font-size: 12px; }
+  .journal-export-actions { width: 100%; }
+  .journal-export-actions label { flex: 1 1 auto; }
+}

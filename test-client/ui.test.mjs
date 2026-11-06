@@ -13,6 +13,7 @@ async function component(file){
  }}]});
  const module={exports:{}};new Function('require','module','exports',result.outputFiles[0].text)(require,module,module.exports);return module.exports;
 }
+const Activity=(await component('src/features/activity/Activity.jsx')).default;
 const PendingPanel=(await component('src/components/PendingPanel.jsx')).default;
 const FeatureHost=(await component('src/components/FeatureHost.jsx')).default;
 const DashboardStats=(await component('src/components/DashboardStats.jsx')).default;
@@ -101,7 +102,7 @@ test('asset and auction forms pass token zero to their actual transaction handle
  elements(NFTApproval({...p,defaultCollection:account})).find(x=>x.type==='form').props.onSubmit({preventDefault(){}});
  assert.equal(p.calls[1][3][1],0n);
  hooks();p.data={...p.data,auctions:[],refund:0n,as:0n};
- elements(Auctions(p)).find(x=>x.props?.submit==='托管并创建拍卖').props.onSubmit({collection:account,token:'0',reserve:'0.001',increment:'0.0001',minutes:'2'});
+ elements(Inventory(p)).find(x=>x.props?.submit==='托管并创建拍卖').props.onSubmit({collection:account,token:'0',reserve:'0.001',increment:'0.0001',minutes:'2'});
  assert.equal(p.calls[2][3][1],0n);
 });
 test('approval form names both destinations and submits the chosen AuctionHouse address',()=>{
@@ -111,20 +112,24 @@ test('approval form names both destinations and submits the chosen AuctionHouse 
  assert.match(html,/交易市场 Marketplace/);assert.match(html,/拍卖市场 AuctionHouse/);assert.match(html,/授权给拍卖市场 AuctionHouse/);
  elements(tree).find(x=>x.type==='form').props.onSubmit({preventDefault(){}});assert.deepEqual(p.calls[0][3],[other,1n]);
 });
-test('approval status renders per-market revoke and combined revoke controls',()=>{
+test('approval status renders per-market revoke controls without a combined action',()=>{
  const p=common();p.s={...s,provider:{}};
  hooks({0:account,1:'1',3:{status:'ready',key:account.toLowerCase()+':1',owner:account,approved:account,market:true,auction:true,marketSingle:true,auctionSingle:false,marketAll:true,auctionAll:true,singleLabel:'交易市场 Marketplace',block:7}});
  const tree=NFTApproval({...p,defaultCollection:account}),buttons=elements(tree).filter(x=>x.type==='button');
  assert.ok(buttons.some(x=>elementText(x)==='取消交易市场授权'));
  assert.ok(buttons.some(x=>elementText(x)==='取消拍卖市场授权'));
- assert.ok(buttons.some(x=>x.props.children==='一键取消两个市场授权'));
+ assert.equal(buttons.some(x=>x.props.children==='一键取消两个市场授权'),false);
  assert.match(renderToStaticMarkup(tree),/该集合全部 NFT 授权/);
 });
-test('bulk revoke sends all applicable ERC721 cancellation calls in sequence',async()=>{
+test('per-market revoke clears only that market and retains single plus collection-wide revocation',async()=>{
  const p=common();p.s={...s,provider:{}};p.tx=(...args)=>{p.calls.push(args);return {hash:'0xconfirmed'};};
  hooks({0:account,1:'1',3:{status:'ready',key:account.toLowerCase()+':1',owner:account,approved:account,market:true,auction:true,marketSingle:true,auctionSingle:false,marketAll:true,auctionAll:true,singleLabel:'交易市场 Marketplace',block:7}});
  const tree=NFTApproval({...p,defaultCollection:account});
- await elements(tree).find(x=>x.type==='button'&&x.props.children==='一键取消两个市场授权').props.onClick();
+ await elements(tree).find(x=>x.type==='button'&&elementText(x)==='取消交易市场授权').props.onClick();
+ assert.deepEqual(p.calls.map(x=>[x[2],x[3]]),[
+  ['approve',[require('ethers').ZeroAddress,1n]],['setApprovalForAll',[account,false]]
+ ]);
+ await elements(tree).find(x=>x.type==='button'&&elementText(x)==='取消拍卖市场授权').props.onClick();
  assert.deepEqual(p.calls.map(x=>[x[2],x[3]]),[
   ['approve',[require('ethers').ZeroAddress,1n]],
   ['setApprovalForAll',[account,false]],
@@ -215,4 +220,144 @@ test('merged admin page retains charts, original actions and all four batch acti
   const html = renderToStaticMarkup(tree);
   assert.match(html, /准备金资金结构/);
   assert.match(html, /手续费归集/);
+});
+
+const {default:CatalogFilters,CatalogSort}=await component('src/components/CatalogFilters.jsx');
+const Market=(await component('src/features/market/Market.jsx')).default;
+const catalogDefaults={name:'',token:'',record:'',seller:'',minPrice:'',maxPrice:'',sort:'newest'};
+
+test('catalog controls expose both markets filters and auction-only remaining-time sorting',()=>{
+ let updated;
+ for(const kind of ['market','auction']){
+  hooks({0:{...catalogDefaults,name:'校园'}});updated=undefined;
+  const tree=CatalogFilters({kind,value:{...catalogDefaults,sort:'priceAsc'},onChange:value=>{updated=value;},total:2,count:2});
+  const nodes=elements(tree);
+  for(const name of ['name','token','record','seller','minPrice','maxPrice'])assert.ok(nodes.some(node=>node.type==='input'&&node.props.name===name));
+  const sortNodes=elements(CatalogSort({kind,value:catalogDefaults,onChange:value=>{updated=value;}}));
+  assert.equal(sortNodes.some(node=>node.type==='option'&&node.props.value==='endingSoon'),kind==='auction');
+  sortNodes.find(node=>node.type==='select').props.onChange({target:{value:'priceAsc'}});
+  assert.equal(updated.sort,'priceAsc');
+  updated=undefined;
+  nodes.find(node=>node.type==='input'&&node.props.name==='name').props.onChange({target:{name:'name',value:'新条件'}});
+  assert.equal(updated,undefined);
+  nodes.find(node=>node.type==='form').props.onSubmit({preventDefault(){}});
+  assert.equal(updated.name,'校园');assert.equal(updated.sort,'priceAsc');
+  assert.ok(nodes.some(node=>node.type==='button'&&node.props.type==='submit'&&node.props.children==='搜索'));
+ }
+});
+
+test('market filter integration retains purchase handlers and exports only completed records',()=>{
+ const p=common();p.s={...s,contracts:{...s.contracts,Marketplace:{}}};
+ const row={id:1n,collection:account,tokenId:0n,seller:other,price:100n,feeBps:100n,revision:1n,expiresAt:2000n,status:1n};
+ p.data={...p.data,listings:[row,{...row,id:2n,status:2n}],mFee:100n,ms:0n,block:1};
+ p.watch=[];p.toggleWatch=()=>{};hooks({0:'all'});
+ const tree=Market(p),nodes=elements(tree);
+ const receipts=nodes.filter(node=>node.props?.kind==='market'&&node.props?.recordId);
+ assert.equal(receipts.length,1);assert.equal(receipts[0].props.recordId,2n);
+ nodes.find(node=>node.type==='button'&&elementText(node).includes('ETH 购买')).props.onClick();
+ assert.equal(p.calls[0][2],'buy');assert.deepEqual(p.calls[0][3],[1n,1n,account]);assert.deepEqual(p.calls[0][4],{value:100n});
+});
+
+test('auction receipt entry requires a settled winning bid and preserves NFT claiming',()=>{
+ const p=common();const base={id:1n,collection:account,tokenId:0n,seller:other,highestBid:10n,reservePrice:5n,highestBidder:account,status:2n,endTime:999n,entitledRecipient:account,assetClaimed:false};
+ for(const [row,expected]of [[base,true],[{...base,status:1n},false],[{...base,highestBid:0n},false]]){
+  const nodes=elements(AuctionCard({...p,v:row}));
+  assert.equal(nodes.some(node=>node.props?.kind==='auction'&&node.props?.recordId===1n),expected);
+ }
+ const claim=elements(AuctionCard({...p,v:base})).find(node=>node.props?.submit==='领取 NFT');
+ claim.props.onSubmit({recipient:account});assert.equal(p.calls[0][2],'claimNFT');
+});
+
+test('activity log export offers CSV and Excel and disables empty or pending downloads',()=>{
+  const entry={action:'购买',state:'success'};
+  for(const [journal,busy,disabled] of [[[],false,true],[[entry],false,false],[[entry],true,true]]){
+    hooks({1:busy});
+    const tree=Activity({s,journal});
+    const nodes=elements(tree);
+    assert.deepEqual(nodes.filter(node=>node.type==='option').map(node=>node.props.value),['csv','xlsx']);
+    assert.equal(nodes.find(node=>node.type==='select').props.value,'csv');
+    assert.equal(nodes.find(node=>node.type==='button').props.disabled,disabled);
+    assert.equal(nodes.find(node=>node.type==='select').props.disabled,busy);
+  }
+});
+
+test('market and auction layouts keep sorting above cards and search inside the ID lookup panel',()=>{
+  const p=common();
+  p.data={...p.data,listings:[],auctions:[],mFee:100n,ms:0n,refund:0n,as:0n};
+  p.watch=[];p.toggleWatch=()=>{};
+  for(const [Component,label,kind] of [[Market,'查询任意订单 ID','market'],[Auctions,'查询任意拍卖 ID','auction']]){
+    hooks();
+    const tree=Component(p),nodes=elements(tree);
+    const lookup=nodes.find(node=>node.props?.label===label);
+    assert.equal(lookup.props.searchControls.props.kind,kind);
+    assert.equal(nodes.some(node=>node.props?.total!==undefined),false);
+    const toolbar=nodes.find(node=>node.props?.className==='catalog-toolbar');
+    assert.equal(toolbar.props.children[0].props.kind,kind);
+    assert.ok(elements(toolbar).some(node=>node.type==='select'));
+    assert.equal(nodes.some(node=>node.props?.submit==='托管并创建拍卖'),false);
+  }
+});
+
+test('auction scope selects active, owned, pending, settled and cancelled rows before search',()=>{
+  const p=common();
+  const base={collection:account,tokenId:0n,seller:other,highestBid:0n,reservePrice:5n,status:1n,endTime:2000n};
+  p.data={...p.data,refund:0n,as:0n,auctions:[
+    {...base,id:1n},{...base,id:2n,endTime:1000n},{...base,id:3n,status:2n},
+    {...base,id:4n,status:3n},{...base,id:5n,seller:account}
+  ]};
+  for(const [scope,expected] of [['active',[5n,1n]],['mine',[5n]],['pending',[2n]],['settled',[3n]],['cancelled',[4n]],['all',[5n,4n,3n,2n,1n]]]){
+    hooks({1:scope});
+    const nodes=elements(Auctions(p));
+    assert.deepEqual(nodes.filter(node=>node.props?.v).map(node=>node.props.v.id),expected);
+  }
+  hooks({0:{...catalogDefaults,record:'1'},1:'all'});
+  assert.deepEqual(elements(Auctions(p)).filter(node=>node.props?.v).map(node=>node.props.v.id),[1n]);
+});
+
+test('asset selection fills both creation forms and independently gates market and auction availability',()=>{
+  const p=common(),selected={collection:other,tokenId:0n};
+  p.data={...p.data,pausedM:false,inventory:[],collections:[],modules:{market:{status:'ready'},auction:{status:'ready'}}};
+  hooks({0:selected});
+  const nodes=elements(Inventory(p));
+  const column=nodes.find(node=>node.props?.className==='asset-creation-forms');
+  const forms=elements(column).filter(node=>node.props?.submit);
+  assert.deepEqual(forms.map(node=>node.props.submit),['托管 NFT 并挂牌','托管并创建拍卖']);
+  for(const form of forms){
+    assert.equal(form.props.fields.find(field=>field.name==='collection').value,other);
+    assert.equal(form.props.fields.find(field=>field.name==='token').value,0n);
+    assert.equal(form.props.disabled,false);
+  }
+  forms[1].props.onSubmit({collection:other,token:'0',reserve:'0.01',increment:'0.001',minutes:'10'});
+  assert.equal(p.calls[0][1],s.contracts.AuctionHouse);
+  assert.equal(p.calls[0][2],'createAuction');
+  assert.deepEqual(p.calls[0][3],[other,0n,10n**16n,10n**15n,1600n]);
+  assert.throws(()=>forms[1].props.onSubmit({collection:other,token:'0',reserve:'0.01',increment:'0.001',minutes:'43201'}));
+  for(const [market,auction,pausedM,pausedA,listingDisabled,auctionDisabled] of [
+    ['error','ready',false,false,true,false],['ready','error',false,false,false,true],
+    ['ready','ready',true,false,true,false],['ready','ready',false,true,false,true]
+  ]){
+    p.data={...p.data,pausedM,pausedA,modules:{market:{status:market},auction:{status:auction}}};
+    hooks();const current=elements(Inventory(p)).filter(node=>node.props?.submit);
+    assert.equal(current.find(node=>node.props.submit==='托管 NFT 并挂牌').props.disabled,listingDisabled);
+    assert.equal(current.find(node=>node.props.submit==='托管并创建拍卖').props.disabled,auctionDisabled);
+  }
+});
+
+test('navigation places assets first and hides personal claims for administrators at every entry',()=>{
+  assert.deepEqual(visibleFeatures(false).slice(0,2).map(feature=>[feature.key,feature.order]),[['inventory','01'],['market','02']]);
+  assert.ok(visibleFeatures(false).some(feature=>feature.key==='claims'));
+  assert.equal(visibleFeatures(true).some(feature=>feature.key==='claims'),false);
+  assert.ok(visibleFeatures(true).some(feature=>feature.key==='reserve'));
+  const feature=features.find(feature=>feature.key==='claims');
+  assert.equal(renderToStaticMarkup(React.createElement(FeatureHost,{feature,data:{isAdmin:true,modules:{}}})), '');
+  assert.equal(MyClaims({data:{isAdmin:true}}),null);
+});
+
+test('auction funds retain both withdrawal handlers in a single row',()=>{
+  const p=common();p.data={...p.data,auctions:[],refund:1n,as:2n};hooks();
+  const row=elements(Auctions(p)).find(node=>node.props?.className==='auction-funds');
+  const buttons=elements(row).filter(node=>node.type==='button');
+  assert.equal(buttons.length,2);
+  for(const button of buttons){assert.equal(button.props.disabled,false);button.props.onClick();}
+  assert.deepEqual(p.calls.map(call=>[call[2],call[3]]),[['withdrawRefund',[account]],['withdrawSellerCredit',[account]]]);
 });
