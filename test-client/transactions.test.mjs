@@ -41,6 +41,15 @@ test('a stale session or failed preflight cannot request a signature',async()=>{
   const f=fixture();f.ports.preflight=async()=>{throw Error('not allowed');};
   await assert.rejects(submitTransaction(f.request,f.ports),/not allowed/);assert.equal(f.sent(),0);
 });
+
+test('logout or wallet change during preflight stops the transaction before a signature is requested',async()=>{
+  const f=fixture();let current=f.s;
+  f.ports.getSession=()=>current;
+  f.writer.estimateGas=async()=>{current=null;return 21000n;};
+  await assert.rejects(submitTransaction(f.request,f.ports),/会话已切换/);
+  assert.equal(f.sent(),0);assert.equal(f.ports.store.get(f.s),null);
+  assert.deepEqual(f.busy,[true,false]);
+});
 test('wallet replacements and reversions resolve pending without automatic resubmission',async()=>{
   for(const [status,cancelled,expected]of [[1,false,'success'],[1,true,'cancelled'],[0,false,'reverted']]){
     const f=fixture(async()=>{throw {code:'TRANSACTION_REPLACED',cancelled,receipt:{hash:'0xreplacement',status}};});

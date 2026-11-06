@@ -27,6 +27,7 @@ const {default:Auctions,AuctionCard}=await component('src/features/auction/Aucti
 const {default:Reserve,MyClaims,ClaimCard,IncidentRow}=await component('src/features/reserve/Reserve.jsx');
 const Mint=(await component('src/features/mint/Mint.jsx')).default;
 const RecordLookup=(await component('src/components/RecordLookup.jsx')).default;
+const Login=(await component('src/components/Login.jsx')).default;
 const mintDraft={name:'校园艺术展',description:'社团作品说明',image:'https://example.org/art.png'};
 const account='0x0000000000000000000000000000000000000011',other='0x0000000000000000000000000000000000000022';
 function hooks(overrides={}){let i=0;globalThis.__ledgerHooks={useState:init=>[Object.hasOwn(overrides,i)?overrides[i++]:((i++),typeof init==='function'?init():init),()=>{}],useRef:v=>({current:v}),useEffect:()=>{}};}
@@ -38,6 +39,30 @@ function elementText(node) {
 function elements(tree){if(!tree||typeof tree!=='object')return [];if(Array.isArray(tree))return tree.flatMap(elements);return [tree,...elements(tree.props?.children)];}
 const s={account,chainId:31337,config:{collections:[],contracts:{Marketplace:account,AuctionHouse:other}},contracts:{AuctionHouse:{},RiskReserve:{}}};
 function common(){const calls=[];return {s,data:{time:1000,pausedA:false,pausedR:false},disabled:false,guarded:fn=>fn(),tx:(...args)=>calls.push(args),calls};}
+
+test('login exposes separate entrances and role-specific demo accounts without business navigation',()=>{
+ const calls=[];
+ const props={role:'user',localIndex:3,onRoleChange:role=>calls.push(role),onIndexChange:()=>{},onConnect:mode=>calls.push(mode),onCancel:()=>{}};
+ let tree=Login(props),html=renderToStaticMarkup(tree);
+ assert.match(html,/用户入口/);assert.match(html,/管理员入口/);assert.doesNotMatch(html,/<nav/);
+ assert.deepEqual(elements(tree).filter(node=>node.type==='option').map(node=>node.props.value),[3,4,5,6,7,8]);
+ elements(tree).find(node=>node.type==='button'&&elementText(node)==='连接钱包进入↗').props.onClick();
+ elements(tree).find(node=>node.type==='button'&&elementText(node).includes('管理员入口')).props.onClick();
+ assert.deepEqual(calls,['wallet','admin']);
+ tree=Login({...props,role:'admin',localIndex:0,busy:true,phase:'verifying'});
+ assert.deepEqual(elements(tree).filter(node=>node.type==='option').map(node=>node.props.value),[0,1,2]);
+ assert.ok(elements(tree).filter(node=>node.type==='button'&&!elementText(node).includes('返回')).every(node=>node.props.disabled));
+ assert.match(renderToStaticMarkup(tree),/正在核验链上身份/);
+});
+
+test('workspace menus prioritize management and never grant admin or mint rights from entrance choice',()=>{
+ assert.equal(visibleFeatures(true,false,'admin')[0].key,'admin');
+ assert.ok(visibleFeatures(true,false,'user').every(feature=>!feature.adminOnly));
+ assert.ok(!visibleFeatures(true,false,'user').some(feature=>feature.userOnly));
+ assert.ok(visibleFeatures(false,false,'admin').every(feature=>!feature.adminOnly));
+ assert.ok(!visibleFeatures(true,false,'admin').some(feature=>feature.key==='mint'));
+ assert.ok(visibleFeatures(false,true,'user').some(feature=>feature.key==='mint'));
+});
 
 test('ordinary users can submit their own appeal and administrators have review controls without a filing form',()=>{
  const p=common();p.data={...p.data,isAdmin:false,incidents:[],claims:[]};hooks();

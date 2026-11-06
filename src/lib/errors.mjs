@@ -63,7 +63,9 @@ const reasons={
 };
 export function friendly(e,context={}){
  const all=[e,e?.error,e?.info?.error,e?.cause].filter(Boolean);
- if(all.some(x=>x.code===4001||x.code==='ACTION_REJECTED'))return '你已取消钱包签名，本次操作未提交。';
+ const login=context.action==='login';
+ if(all.some(x=>x.code===4001||x.code==='ACTION_REJECTED'))return login?'你已取消钱包连接，可以重新选择入口后重试。':'你已取消钱包签名，本次操作未提交。';
+ if(login&&all.some(x=>x.code===-32002))return 'MetaMask 中还有待处理的请求，请打开钱包完成或取消后重试。';
  if(all.some(x=>x.code==='INSUFFICIENT_FUNDS'))return '账户 ETH 不足，无法支付本次金额和 Gas。';
  let parsed;
  for(const x of all){for(const data of [x.data,x.data?.data,x.data?.result]){if(typeof data==='string')try{parsed=custom.parseError(data);if(parsed)break;}catch{}}if(parsed)break;}
@@ -76,7 +78,12 @@ export function friendly(e,context={}){
  const texts=all.flatMap(x=>[x.reason,x.shortMessage,x.message]).filter(x=>typeof x==='string');
  for(const [key,value]of Object.entries(reasons))if(texts.some(t=>t.includes(key)))return value;
  if(texts.some(t=>/invalid address|bad address checksum/i.test(t)))return '地址格式不正确，请粘贴完整的 0x 开头地址并核对大小写。';
- if(texts.some(t=>/fetch|network|timeout|connection|could not coalesce|missing response/i.test(t)))return '网络请求未完成，请检查节点连接；若已发送交易，请先核对回执，避免重复提交。';
+ if(all.some(x=>['NETWORK_ERROR','TIMEOUT'].includes(x.code))||texts.some(t=>/fetch|network|timeout|connection|could not coalesce|missing response/i.test(t))){
+  if(login)return context.mode==='local'
+   ? '本地节点连接失败。请先运行 npm run demo，等待初始化完成后重试；使用自定义端口时，请核对部署清单中的节点地址。登录过程未发送交易。'
+   : '钱包连接或网络请求失败。请检查 MetaMask 当前网络的 RPC 是否可用；体验本机课程环境，可使用下方“本地演示”，无需 MetaMask。登录过程未发送交易。';
+  return '网络请求未完成，请检查节点连接；若已发送交易，请先核对回执，避免重复提交。';
+ }
  const chinese=texts.find(t=>/[\u4e00-\u9fff]/.test(t)&&!t.includes('execution reverted')&&t.length<350);
- return chinese||'操作未成功，链上状态或钱包请求未通过。请同步状态并核对输入后重试；不要重复发送待确认交易。';
+ return chinese||(login?'登录未完成，请检查钱包账户、网络和平台部署配置后重试。登录过程未发送交易。':'操作未成功，链上状态或钱包请求未通过。请同步状态并核对输入后重试；不要重复发送待确认交易。');
 }
