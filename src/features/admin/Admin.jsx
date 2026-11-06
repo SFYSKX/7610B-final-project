@@ -31,8 +31,7 @@ const adminActions={
     if(review<=claim)throw Error('审核窗口必须大于申请窗口');
     return [id(v.policy),amount(v.budget),BigInt(d.time)+claim*60n,BigInt(d.time)+review*60n];
   }},
-  entitlement:{label:'准备金：登记受影响权益',target:'RiskReserve',method:'registerEntitlement',fields:[f('incident','事故 ID'),f('key','唯一损失标识（市场+订单+账户+损失类型）'),f('beneficiary','受影响账户'),f('max','最大净损失 ETH','0.01')],args:v=>[integer(v.incident,{min:1n}),id(v.key),address(v.beneficiary),amount(v.max)]},
-  approve:{label:'准备金：批准申请',target:'RiskReserve',method:'approveClaim',fields:[f('claim','权益 / 申请 ID'),f('amount','批准金额 ETH','0.01')],args:v=>[integer(v.claim,{min:1n}),amount(v.amount)]},
+  approve:{label:'准备金：批准用户申诉',target:'RiskReserve',method:'approveClaim',fields:[f('claim','申诉 ID'),f('amount','批准金额 ETH','0.01')],args:v=>[integer(v.claim,{min:1n}),amount(v.amount)]},
   reject:{label:'准备金：拒绝申请',target:'RiskReserve',method:'rejectClaim',fields:[f('claim','申请 ID'),f('reason','拒绝理由（计算 hash）')],args:v=>[integer(v.claim,{min:1n}),id(v.reason)]}
 };
 

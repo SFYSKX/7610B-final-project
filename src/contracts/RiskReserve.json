@@ -118,6 +118,30 @@
           "type": "uint256"
         },
         {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "incidentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "beneficiary",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "lossKey",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "requestedAmount",
+          "type": "uint256"
+        },
+        {
           "indexed": false,
           "internalType": "bytes32",
           "name": "evidenceHash",
@@ -144,43 +168,6 @@
         }
       ],
       "name": "Deposited",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "claimId",
-          "type": "uint256"
-        },
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "incidentId",
-          "type": "uint256"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "beneficiary",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "bytes32",
-          "name": "lossKey",
-          "type": "bytes32"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "maxLoss",
-          "type": "uint256"
-        }
-      ],
-      "name": "EntitlementRegistered",
       "type": "event"
     },
     {
@@ -363,6 +350,30 @@
       "inputs": [
         {
           "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "claimOf",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
           "name": "id",
           "type": "uint256"
         },
@@ -448,6 +459,11 @@
               "internalType": "enum RiskReserve.State",
               "name": "state",
               "type": "uint8"
+            },
+            {
+              "internalType": "string",
+              "name": "statement",
+              "type": "string"
             }
           ],
           "internalType": "struct RiskReserve.Claim",
@@ -610,59 +626,6 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "incidentId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "lossKey",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "address",
-          "name": "beneficiary",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "maxLoss",
-          "type": "uint256"
-        }
-      ],
-      "name": "registerEntitlement",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "id",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "name": "registeredLoss",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
           "name": "id",
           "type": "uint256"
         },
@@ -701,8 +664,23 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "id",
+          "name": "incidentId",
           "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "lossKey",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "requestedAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "statement",
+          "type": "string"
         },
         {
           "internalType": "bytes32",
@@ -711,7 +689,13 @@
         }
       ],
       "name": "submitClaim",
-      "outputs": [],
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        }
+      ],
       "stateMutability": "nonpayable",
       "type": "function"
     },

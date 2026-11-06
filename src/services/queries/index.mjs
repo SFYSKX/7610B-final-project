@@ -3,6 +3,7 @@ import {readAuction} from './auction.mjs';
 import {readReserve} from './reserve.mjs';
 import {readAssets} from './assets.mjs';
 import {readIdentity,readGovernance,readFees} from './governance.mjs';
+import {readMinting} from './minting.mjs';
 
 /** Query interface: async (Session, {block, options:{blockTag}}) -> domain fields.
  * Independent modules must not read each other's results. No writes in queries.
@@ -10,11 +11,11 @@ import {readIdentity,readGovernance,readFees} from './governance.mjs';
  */
 export const queryReaders=Object.freeze({
   market:readMarket,auction:readAuction,reserve:readReserve,assets:readAssets,
-  identity:readIdentity,governance:readGovernance,fees:readFees
+  identity:readIdentity,governance:readGovernance,fees:readFees,minting:readMinting
 });
 export {queryLabels,isReady} from '../queryState.mjs';
 export function unavailableSnapshot(s,keys=Object.keys(queryReaders)) {
-  return {isAdmin:false,isCouncilSigner:false,collections:s.config.collections||[],counts:{},
+  return {isAdmin:false,isIssuer:false,isCouncilSigner:false,collections:s.config.collections||[],counts:{},
     modules:Object.fromEntries(keys.map(key=>[key,{status:'error',block:null,message:'暂时无法读取链上状态，请检查节点或网络后重试。'}]))};
 }
 async function bounded(read,timeoutMs) {

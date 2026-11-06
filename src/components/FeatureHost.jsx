@@ -3,7 +3,7 @@ import ModuleBoundary from './ModuleBoundary.jsx';
 import {isReady,queryLabels} from '../services/queryState.mjs';
 
 export default function FeatureHost({feature,retry,...props}) {
-  if(!feature||(feature.adminOnly&&!props.data.isAdmin))return null;
+  if(!feature||(feature.adminOnly&&!props.data.isAdmin)||(feature.issuerOnly&&!props.data.isIssuer))return null;
   const failed=feature.dependencies.filter(key=>!isReady(props.data,key));
   if(failed.length)return <section className="panel" role="alert">
     <h2>{feature.label}暂时不可用</h2>

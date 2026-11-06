@@ -58,7 +58,7 @@ async function main() {
   await one('AuctionHouse', [d.admin, d.contracts.FeeRouter]);
   for (const name of ['RiskReserve','FeeRouter','Marketplace','AuctionHouse']) {
     const c = await hre.ethers.getContractAt(name,d.contracts[name]);
-    if (await c.owner() !== d.admin || await c.API_VERSION() !== 2n) throw Error('Resume config mismatch: '+name);
+    if (await c.owner() !== d.admin || await c.API_VERSION() !== (name==='RiskReserve'?3n:2n)) throw Error('Resume config mismatch: '+name);
   }
   d.deploymentIdentity=(await hre.ethers.provider.getBlock(d.deploymentBlock)).hash;
   d.status = 'complete'; save(d);
