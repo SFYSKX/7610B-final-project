@@ -22,16 +22,16 @@ export function ClaimCard({s,data,tx,guarded,disabled,c}){
  </div>;
 }
 export function MyClaims({s,data,tx,guarded,disabled}){
+ if(data.isAdmin)return null;
  const props={s,data,tx,guarded,disabled};
  const open=data.incidents.filter(i=>!i.closed&&data.time<Number(i.claimDeadline));
- return <><section className="panel"><h2>用户申诉</h2>
-  {data.isAdmin?<p>管理员在“风险准备金”和“共同管理”中审核申诉，不代替用户发起。提交申诉请切换普通用户账户。</p>:<>
+ return <><section className="panel claim-submission"><h2>用户申诉</h2>
+
    <p>针对管理员已开放的事故自主提交，无需先登记赔付资格。每个账户对同一事故只可提交一次；提交不表示已获赔。</p>
    <p className="muted">下方关联记录、原因和证据说明将公开上链，合计最多 1024 个 UTF-8 字节。证据事实与损失金额仍需管理员审核。</p>
    <div>{open.map(i=><p key={i.id}>可申请事故 #{String(i.id)} · 预算 {eth(i.budget)} ETH · 截止 {date(i.claimDeadline)}</p>)}{!open.length&&<p>暂无近期开放事故。已有事故可使用管理员公布的事故 ID；合约会检查有效期。</p>}</div>
    <Form fields={[f('incident','事故 ID',open[0]?.id??''),f('reference','关联订单 / 拍卖 / 交易记录'),f('requested','申请赔付金额 ETH',''),f('reason','申诉原因'),f('evidence','证据说明或链接')]} submit="提交申诉" disabled={disabled||data.pausedR} onSubmit={values=>guarded(()=>tx('提交申诉',s.contracts.RiskReserve,'submitClaim',claimArguments(values)))}/>
    {data.pausedR&&<p role="status">新增申诉已暂停；已批准的赔付仍可领取。</p>}
-  </>}
  </section><section className="panel"><h2>我的申诉与赔付</h2>{data.claims.filter(c=>same(c.beneficiary,s.account)).map(c=><ClaimCard key={c.id} {...props} c={c}/>)}<RecordLookup s={s} block={data.block} label="查询我的申诉 ID" read={async(id,o)=>{const c=await s.contracts.RiskReserve.getClaim(id,o);if(c.state===0n||!same(c.beneficiary,s.account))throw Error('当前账户没有这项申诉');return claimRecord(c);}}>{c=><ClaimCard {...props} c={c}/>}</RecordLookup></section></>;
 }
 export default function Reserve({s,data,tx,guarded,disabled}){
