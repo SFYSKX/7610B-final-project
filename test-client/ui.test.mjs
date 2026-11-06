@@ -27,6 +27,7 @@ const {default:Auctions,AuctionCard}=await component('src/features/auction/Aucti
 const {default:Reserve,MyClaims,ClaimCard,IncidentRow}=await component('src/features/reserve/Reserve.jsx');
 const Mint=(await component('src/features/mint/Mint.jsx')).default;
 const RecordLookup=(await component('src/components/RecordLookup.jsx')).default;
+const mintDraft={name:'校园艺术展',description:'社团作品说明',image:'https://example.org/art.png'};
 const account='0x0000000000000000000000000000000000000011',other='0x0000000000000000000000000000000000000022';
 function hooks(overrides={}){let i=0;globalThis.__ledgerHooks={useState:init=>[Object.hasOwn(overrides,i)?overrides[i++]:((i++),typeof init==='function'?init():init),()=>{}],useRef:v=>({current:v}),useEffect:()=>{}};}
 function elementText(node) {
@@ -51,9 +52,12 @@ test('ordinary users can submit their own appeal and administrators have review 
 });
 
 test('mint page submits issuer-owned collection, recipient and count through the normal transaction pipeline',()=>{
- const p=common();p.data={...p.data,mintable:[{address:account,name:'Test NFT',owner:s.account,nextTokenId:0n,limit:10}],isIssuer:true};hooks();
+ const p=common();p.data={...p.data,mintable:[{address:account,name:'Test NFT',owner:s.account,nextTokenId:0n,limit:10}],isIssuer:true};hooks({1:mintDraft});
  const tree=Mint(p),form=elements(tree).find(x=>x.props?.submit==='确认铸造 NFT');assert.ok(form);
+ assert.equal(elements(tree).some(x=>x.type==='button'&&elementText(x).includes('添加属性')),false);
+ assert.equal(elements(tree).some(x=>x.props?.className==='mint-attributes'),false);
  form.props.onSubmit({recipient:other,count:'3'});assert.equal(p.calls[0][2],'mintBatch');assert.deepEqual(p.calls[0][3].slice(0,2),[other,3n]);
+ const metadata=JSON.parse(Buffer.from(p.calls[0][3][2].split(',')[1],'base64').toString('utf8'));assert.deepEqual(metadata,mintDraft);
  form.props.onSubmit({recipient:other,count:'1'});assert.equal(p.calls[1][2],'mint');
  assert.throws(()=>form.props.onSubmit({recipient:other,count:'11'}));assert.throws(()=>form.props.onSubmit({recipient:'0x0',count:'1'}));
  assert.ok(visibleFeatures(false,true).some(f=>f.key==='mint'));assert.equal(visibleFeatures(true,false).some(f=>f.key==='mint'),false);
@@ -62,7 +66,7 @@ test('mint page submits issuer-owned collection, recipient and count through the
 
 test('legacy single-mint collections remain usable and non-issuers do not receive a mint form',()=>{
  const p=common();p.data={...p.data,mintable:[]};hooks();assert.equal(elements(Mint(p)).some(x=>x.props?.submit==='确认铸造 NFT'),false);
- p.data.mintable=[{address:account,owner:account,nextTokenId:7n,limit:1}];hooks();
+ p.data.mintable=[{address:account,owner:account,nextTokenId:7n,limit:1}];hooks({1:mintDraft});
  const form=elements(Mint(p)).find(x=>x.props?.submit==='确认铸造 NFT');
  assert.throws(()=>form.props.onSubmit({recipient:other,count:'2'}));form.props.onSubmit({recipient:other,count:'1'});assert.equal(p.calls[0][2],'mint');
 });
@@ -360,4 +364,16 @@ test('auction funds retain both withdrawal handlers in a single row',()=>{
   assert.equal(buttons.length,2);
   for(const button of buttons){assert.equal(button.props.disabled,false);button.props.onClick();}
   assert.deepEqual(p.calls.map(call=>[call[2],call[3]]),[['withdrawRefund',[account]],['withdrawSellerCredit',[account]]]);
+});
+
+test('mint form blocks incomplete and oversized metadata while preserving valid metadata during pending operations',()=>{
+ const p=common();p.data={...p.data,mintable:[{address:account,owner:account,nextTokenId:0n,limit:10}]};
+ for(const draft of [{...mintDraft,name:''},{...mintDraft,image:'javascript:alert(1)'},{...mintDraft,description:'艺'.repeat(1200)}]){
+  hooks({1:draft});const tree=Mint(p),form=elements(tree).find(x=>x.props?.submit==='确认铸造 NFT');
+  assert.equal(form.props.disabled,true);assert.throws(()=>form.props.onSubmit({recipient:other,count:'1'}));
+ }
+ assert.equal(p.calls.length,0);
+ hooks({1:mintDraft});p.disabled=true;const tree=Mint(p);
+ assert.equal(elements(tree).find(x=>x.props?.submit==='确认铸造 NFT').props.disabled,true);
+ assert.equal(elements(tree).find(x=>x.type==='fieldset').props.disabled,true);
 });

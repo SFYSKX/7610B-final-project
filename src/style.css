@@ -468,3 +468,20 @@ summary { color: #5a7650; line-height: 1.8; cursor: pointer; }
   .journal-export-actions { width: 100%; }
   .journal-export-actions label { flex: 1 1 auto; }
 }
+
+/* Mint metadata editor reuses the existing NFT detail presentation. */
+.mint-editor { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; margin: 10px 0 18px; align-items: start; }
+.mint-metadata { display: grid; min-width: 0; gap: 16px; margin: 0; padding: 0; border: 0; }
+.mint-metadata legend { margin-bottom: 16px; font-size: 15px; font-weight: 600; }
+.mint-metadata > p { margin: -8px 0 0; }
+.mint-metadata:disabled { opacity: .7; }
+.mint-metadata textarea { min-height: 130px; }
+.mint-preview { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); overflow-wrap: anywhere; }
+.mint-preview .nft-image { height: 240px; margin: 0 0 16px; border-radius: 6px; }
+.mint-preview .nft-description { margin-bottom: 12px; }
+@media (max-width: 1000px) {
+  .mint-editor { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .mint-preview { padding: 16px; }
+}
