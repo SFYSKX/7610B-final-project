@@ -83,6 +83,20 @@ describe('User appeals and browser NFT issuance',function(){
   for(let i=1;i<=3;i++){assert.equal(await n.ownerOf(i),s[3].address);assert.equal(await n.tokenURI(i),'data:application/json,{}');}
   const minted=receipt.logs.map(l=>{try{return n.interface.parseLog(l);}catch{return null;}}).filter(l=>l?.name==='DemoMinted');assert.equal(minted.length,3);
  });
+ it('custom mint metadata survives single and batch minting and loads through NFTDetails parsing',async()=>{
+  const {createMintMetadata}=await import('../src/services/mintMetadata.mjs');
+  const {loadMetadata}=await import('../src/services/nftMetadata.mjs');
+  const draft={name:'校园艺术 🌿',description:'第一行\n第二行',image:'ipfs://bafyexample/art.png'};
+  const {uri}=createMintMetadata(draft);
+  await n.mint(s[3].address,uri);await n.mintBatch(s[3].address,2,uri);
+  for(const token of [1,2,3]){
+   assert.equal(await n.tokenURI(token),uri);assert.equal(await n.ownerOf(token),s[3].address);
+   const detail=await loadMetadata({readURI:()=>n.tokenURI(token)});
+   assert.equal(detail.name,draft.name);assert.equal(detail.description,draft.description);
+   assert.equal(detail.image,'https://ipfs.io/ipfs/bafyexample/art.png');
+   assert.deepEqual(detail.attributes,[]);
+  }
+ });
  it('platform administrator status and NFT ownership do not substitute for issuer permission',async()=>{
   for(const i of [1,2,3,4])await assert.rejects(n.connect(s[i]).mintBatch(s[i].address,1,'test'),/OwnableUnauthorized/);
   await n.transferOwnership(s[4].address);await assert.rejects(n.mint(s[3].address,'test'),/OwnableUnauthorized/);
