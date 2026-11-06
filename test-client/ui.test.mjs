@@ -23,7 +23,8 @@ const History=(await component('src/features/history/History.jsx')).default;
 const Inventory=(await component('src/features/assets/Inventory.jsx')).default;
 const NFTApproval=(await component('src/features/assets/NFTApproval.jsx')).default;
 const {default:Auctions,AuctionCard}=await component('src/features/auction/Auctions.jsx');
-const {default:Reserve,ClaimCard,IncidentRow}=await component('src/features/reserve/Reserve.jsx');
+const {default:Reserve,MyClaims,ClaimCard,IncidentRow}=await component('src/features/reserve/Reserve.jsx');
+const Mint=(await component('src/features/mint/Mint.jsx')).default;
 const RecordLookup=(await component('src/components/RecordLookup.jsx')).default;
 const account='0x0000000000000000000000000000000000000011',other='0x0000000000000000000000000000000000000022';
 function hooks(overrides={}){let i=0;globalThis.__ledgerHooks={useState:init=>[Object.hasOwn(overrides,i)?overrides[i++]:((i++),typeof init==='function'?init():init),()=>{}],useRef:v=>({current:v}),useEffect:()=>{}};}
@@ -35,6 +36,35 @@ function elementText(node) {
 function elements(tree){if(!tree||typeof tree!=='object')return [];if(Array.isArray(tree))return tree.flatMap(elements);return [tree,...elements(tree.props?.children)];}
 const s={account,chainId:31337,config:{collections:[],contracts:{Marketplace:account,AuctionHouse:other}},contracts:{AuctionHouse:{},RiskReserve:{}}};
 function common(){const calls=[];return {s,data:{time:1000,pausedA:false,pausedR:false},disabled:false,guarded:fn=>fn(),tx:(...args)=>calls.push(args),calls};}
+
+test('ordinary users can submit their own appeal and administrators have review controls without a filing form',()=>{
+ const p=common();p.data={...p.data,isAdmin:false,incidents:[],claims:[]};hooks();
+ const tree=MyClaims(p),form=elements(tree).find(x=>x.props?.submit==='提交申诉');assert.ok(form);
+ form.props.onSubmit({incident:'1',reference:'order 2',requested:'0.001',reason:'settlement issue',evidence:'receipt 1'});
+ assert.equal(p.calls[0][2],'submitClaim');assert.equal(p.calls[0][3].length,5);assert.equal(p.calls[0][3][0],1n);
+ p.data.isAdmin=true;hooks();assert.equal(elements(MyClaims(p)).some(x=>x.props?.submit==='提交申诉'),false);
+ hooks();p.data={...p.data,proposals:[],approvals:{}};
+ const options=elements(Admin(p)).filter(x=>x.type==='option').map(x=>String(x.props.children));
+ assert.ok(options.some(x=>x.includes('批准用户申诉')));assert.ok(options.some(x=>x.includes('拒绝申请')));
+ assert.equal(options.some(x=>x.includes('登记受影响权益')),false);
+});
+
+test('mint page submits issuer-owned collection, recipient and count through the normal transaction pipeline',()=>{
+ const p=common();p.data={...p.data,mintable:[{address:account,name:'Test NFT',owner:s.account,nextTokenId:0n,limit:10}],isIssuer:true};hooks();
+ const tree=Mint(p),form=elements(tree).find(x=>x.props?.submit==='确认铸造 NFT');assert.ok(form);
+ form.props.onSubmit({recipient:other,count:'3'});assert.equal(p.calls[0][2],'mintBatch');assert.deepEqual(p.calls[0][3].slice(0,2),[other,3n]);
+ form.props.onSubmit({recipient:other,count:'1'});assert.equal(p.calls[1][2],'mint');
+ assert.throws(()=>form.props.onSubmit({recipient:other,count:'11'}));assert.throws(()=>form.props.onSubmit({recipient:'0x0',count:'1'}));
+ assert.ok(visibleFeatures(false,true).some(f=>f.key==='mint'));assert.equal(visibleFeatures(true,false).some(f=>f.key==='mint'),false);
+ assert.equal(renderToStaticMarkup(React.createElement(FeatureHost,{feature:features.find(f=>f.key==='mint'),data:{isAdmin:true,isIssuer:false,modules:{}}})), '');
+});
+
+test('legacy single-mint collections remain usable and non-issuers do not receive a mint form',()=>{
+ const p=common();p.data={...p.data,mintable:[]};hooks();assert.equal(elements(Mint(p)).some(x=>x.props?.submit==='确认铸造 NFT'),false);
+ p.data.mintable=[{address:account,owner:account,nextTokenId:7n,limit:1}];hooks();
+ const form=elements(Mint(p)).find(x=>x.props?.submit==='确认铸造 NFT');
+ assert.throws(()=>form.props.onSubmit({recipient:other,count:'2'}));form.props.onSubmit({recipient:other,count:'1'});assert.equal(p.calls[0][2],'mint');
+});
 
 test('pending panel renders replacement hash controls with real JSX imports',()=>{hooks();const html=renderToStaticMarkup(React.createElement(PendingPanel,{pending:{action:'pending test',hash:'0x1234'},onCheck:()=>{}}));assert.match(html,/待确认交易/);assert.match(html,/核对替换交易/);});
 test('feature dependencies gate failed views while keeping independent pages available',()=>{

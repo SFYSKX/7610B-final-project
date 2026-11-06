@@ -13,7 +13,7 @@ async function validateDeployment(hre,d,log=console.log){
  for(const name of ['Marketplace','AuctionHouse','RiskReserve','FeeRouter']){
   const address=d.contracts?.[name];await code(address,name);
   const c=contracts[name]=await ethers.getContractAt(name,address);
-  fail(await c.API_VERSION(o)===2n&&equal(await c.owner(o),d.admin),'Version/admin mismatch: '+name);
+  fail(await c.API_VERSION(o)===(name==='RiskReserve'?3n:2n)&&equal(await c.owner(o),d.admin),'Version/admin mismatch: '+name);
   log(name+' code/version/admin OK');
  }
  const {Marketplace:m,AuctionHouse:a,RiskReserve:r,FeeRouter:f}=contracts;

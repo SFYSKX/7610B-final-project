@@ -5,6 +5,7 @@ import History from './history/History.jsx';
 import Reserve,{MyClaims} from './reserve/Reserve.jsx';
 import Admin from './admin/Admin.jsx';
 import Activity from './activity/Activity.jsx';
+import Mint from './mint/Mint.jsx';
 
 /** Feature contract: key, label, order, Component, dependencies, optional adminOnly.
  * Components receive {s,data,tx,guarded,disabled,...viewProps}; writes use tx only.
@@ -18,6 +19,7 @@ export const features=Object.freeze([
   {key:'reserve',label:'风险准备金',order:'05',Component:Reserve,dependencies:['identity','reserve'],adminOnly:true},
   {key:'admin',label:'共同管理',order:'06',Component:Admin,dependencies:['identity','governance','reserve','auction','fees'],adminOnly:true},
   {key:'activity',label:'交易记录',order:'07',Component:Activity,dependencies:[]},
-  {key:'claims',label:'我的赔付',order:'08',Component:MyClaims,dependencies:['reserve']}
+  {key:'claims',label:'我的申诉',order:'08',Component:MyClaims,dependencies:['reserve','identity']},
+  {key:'mint',label:'铸造管理',order:'09',Component:Mint,dependencies:['minting'],issuerOnly:true}
 ]);
-export const visibleFeatures=isAdmin=>features.filter(feature=>!feature.adminOnly||isAdmin);
+export const visibleFeatures=(isAdmin,isIssuer=false)=>features.filter(feature=>(!feature.adminOnly||isAdmin)&&(!feature.issuerOnly||isIssuer));

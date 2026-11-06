@@ -2,6 +2,8 @@
 
 本包提供 NFT 定价交易、拍卖、手续费分配和多签赔付的源码。用途与功能见 [项目介绍](PROJECT_OVERVIEW.md)。本指南说明每位接收者如何使用自己的账户运行和调试，包括管理员功能。
 
+本次用户申诉版要求 RiskReserve API 3，旧准备金 API 2 不兼容，必须新建独立平台部署；详见 [申诉与铸造](CLAIMS_AND_MINTING.md)。
+
 ## 1. 独立部署到底分开什么
 
 每个人使用同一个源码包和 Ethereum Sepolia 网络（chain ID 11155111），但各自部署自己的 Safe、业务合约和 NFT 集合。合约地址、资产、订单、余额、预算和管理权限属于各自实例。一个人的暂停或赔付操作不会修改另一个人的平台。
@@ -88,7 +90,7 @@ npm run deploy:test-assets:sepolia
 
 核心部署完成表示四个业务合约已有地址，不表示 Safe 初始化已完成。不要手写或复制别人的地址来跳过部署。若 RPC 超时，保留清单，按 [恢复说明](VALIDATION.md) 核对交易；不要删除清单或盲目重复发送。
 
-部署测试集合会复用同一请求 ID；铸造每次都会新增 NFT。以下 Windows CMD 命令向自己的 SELLER 铸造一件：
+部署测试集合会复用同一请求 ID；铸造每次都会新增 NFT。NFT owner 也可直接通过网页“铸造管理”填写接收者和数量，无需运行命令。以下 Windows CMD 命令向自己的 SELLER 铸造一件：
 
 ```bat
 set /p "NFT_RECIPIENT=Enter your SELLER address: "

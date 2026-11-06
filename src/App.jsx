@@ -56,10 +56,10 @@ export default function App(){
  const common={s,data,tx,guarded,disabled};
  const isAdmin=!!data?.isAdmin;
  const visibleJournal=selectJournal(journal,s,isAdmin);
- const visibleTabs=visibleFeatures(isAdmin);
+ const visibleTabs=visibleFeatures(isAdmin,!!data?.isIssuer);
  const activeFeature=features.find(feature=>feature.key===tab);
  const failedModules=data?Object.keys(data.modules).filter(key=>!isReady(data,key)):[];
- useEffect(()=>{if(activeFeature?.adminOnly&&!isAdmin)setTab('market');},[isAdmin,activeFeature]);
+ useEffect(()=>{if((activeFeature?.adminOnly&&!isAdmin)||(activeFeature?.issuerOnly&&!data?.isIssuer))setTab('market');},[isAdmin,data?.isIssuer,activeFeature]);
  return <div className="layout" onClickCapture={captureAction} onSubmitCapture={captureAction}><aside><a className="brand" href="#" onClick={e=>{e.preventDefault();setTab('market');}}><span className="brand-mark">L</span><span>Ledger<span className="brand-light"> Market</span></span></a><div className="workspace">NFT EXCHANGE / TESTNET</div><nav>{visibleTabs.map(({key,label,order:n})=><button key={key} className={tab===key?'nav active':'nav'} onClick={()=>setTab(key)}><span>{label}</span><small>{n}</small></button>)}</nav><div className="sidebar-note"><span className="dot"/>资产与规则，链上可查<p>定价交易 · 公开竞价<br/>多方审批 · 独立准备金</p><small>课程测试网项目 / v2.0</small></div></aside><main>
  <header><div><span className="eyebrow">OPEN ASSETS. VISIBLE RULES.</span><h1>{activeFeature?.label}</h1></div><div className="connections">{s?.mode==='local'&&<select aria-label="本地账户" value={localIndex} disabled={disabled} onChange={e=>{const n=Number(e.target.value);setLocalIndex(n);start('local',n);}}>{s.accounts.slice(0,10).map((a,i)=><option key={a} value={i}>{names[i]} · {short(a)}</option>)}</select>}<button className="secondary" disabled={disabled} onClick={()=>start('local')}>本地演示</button><button disabled={disabled} onClick={()=>start('wallet')}>连接 MetaMask</button></div></header>
  <div className="network-row"><span className="dot"/>{s?`${s.chainId===31337?'LOCAL 31337':'SEPOLIA'} · ${short(s.account)} · 区块 ${data?.block??'读取中'}`:'尚未连接 · 请选择本地演示或 MetaMask'}{s&&<button className="text-btn" onClick={()=>refresh.current?.request()}>同步</button>}</div>

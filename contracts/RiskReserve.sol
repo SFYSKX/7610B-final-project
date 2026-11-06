@@ -3,10 +3,12 @@ pragma solidity 0.8.24;
 import "./AdminAccess.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 contract RiskReserve is AdminAccess, ReentrancyGuard {
-    uint256 public constant API_VERSION=2;
+    uint256 public constant API_VERSION=3;
     struct Incident { bytes32 policyHash; uint256 budget; uint256 approved; uint256 paid; uint64 claimDeadline; uint64 reviewDeadline; bool closed; }
     enum State { None, Registered, Submitted, Approved, Rejected, Paid }
-    struct Claim { uint256 incidentId; bytes32 lossKey; address beneficiary; uint256 maxLoss; uint256 amount; bytes32 evidenceHash; bytes32 reasonHash; State state; }
+    // maxLoss is the user's REQUESTED amount, not an independently verified loss.
+    // Registered retains its old enum slot; new claims start directly at Submitted.
+    struct Claim { uint256 incidentId; bytes32 lossKey; address beneficiary; uint256 maxLoss; uint256 amount; bytes32 evidenceHash; bytes32 reasonHash; State state; string statement; }
     error InvalidPolicy();
     error InvalidBudget();
     error InsufficientBudget(uint256 requested, uint256 availableAmount);
@@ -16,11 +18,10 @@ contract RiskReserve is AdminAccess, ReentrancyGuard {
     bool public paused;
     mapping(uint256=>Incident) private incidents;
     mapping(uint256=>Claim) private claims;
-    mapping(bytes32=>bool) public registeredLoss;
+    mapping(uint256=>mapping(address=>uint256)) public claimOf;
     event Deposited(address indexed from,uint256 amount);
     event IncidentOpened(uint256 indexed id,bytes32 policyHash,uint256 budget,uint64 claimDeadline,uint64 reviewDeadline);
-    event EntitlementRegistered(uint256 indexed claimId,uint256 indexed incidentId,address indexed beneficiary,bytes32 lossKey,uint256 maxLoss);
-    event ClaimSubmitted(uint256 indexed id,bytes32 evidenceHash);
+    event ClaimSubmitted(uint256 indexed id,uint256 indexed incidentId,address indexed beneficiary,bytes32 lossKey,uint256 requestedAmount,bytes32 evidenceHash);
     event ClaimApproved(uint256 indexed id,uint256 amount);
     event ClaimRejected(uint256 indexed id,bytes32 reasonHash);
     event IncidentClosed(uint256 indexed id,uint256 released);
@@ -42,16 +43,17 @@ contract RiskReserve is AdminAccess, ReentrancyGuard {
         totalIncidentReserved+=budget;id=++incidentCount;incidents[id]=Incident(policyHash,budget,0,0,claimDeadline,reviewDeadline,false);
         emit IncidentOpened(id,policyHash,budget,claimDeadline,reviewDeadline);
     }
-    function registerEntitlement(uint256 incidentId,bytes32 lossKey,address beneficiary,uint256 maxLoss) external onlyOwner live returns(uint256 id){
-        Incident storage i=incidents[incidentId];require(block.timestamp<i.claimDeadline && !i.closed,"Registration closed");
-        require(lossKey!=bytes32(0) && !registeredLoss[lossKey] && beneficiary!=address(0) && maxLoss>0 && maxLoss<=i.budget,"Invalid entitlement");
-        registeredLoss[lossKey]=true;id=++claimCount;claims[id]=Claim(incidentId,lossKey,beneficiary,maxLoss,0,0,0,State.Registered);
-        emit EntitlementRegistered(id,incidentId,beneficiary,lossKey,maxLoss);
-    }
-    function submitClaim(uint256 id,bytes32 evidenceHash) external live {
-        Claim storage c=claims[id];Incident storage i=incidents[c.incidentId];
-        require(c.beneficiary==msg.sender && c.state==State.Registered,"Not eligible");require(!i.closed && block.timestamp<i.claimDeadline && evidenceHash!=bytes32(0),"Invalid submission");
-        c.evidenceHash=evidenceHash;c.state=State.Submitted;emit ClaimSubmitted(id,evidenceHash);
+    function submitClaim(uint256 incidentId,bytes32 lossKey,uint256 requestedAmount,string calldata statement,bytes32 evidenceHash) external live returns(uint256 id){
+        require(!isAdministrator(msg.sender),"Administrators cannot submit claims");
+        Incident storage i=incidents[incidentId];
+        require(i.budget>0 && !i.closed && block.timestamp<i.claimDeadline,"Submission closed");
+        require(claimOf[incidentId][msg.sender]==0,"Already submitted");
+        require(lossKey!=bytes32(0) && evidenceHash!=bytes32(0) && bytes(statement).length>0 && bytes(statement).length<=1024,"Invalid claim evidence");
+        require(requestedAmount>0 && requestedAmount<=i.budget,"Invalid claim amount");
+        id=++claimCount;
+        claims[id]=Claim(incidentId,lossKey,msg.sender,requestedAmount,0,evidenceHash,0,State.Submitted,statement);
+        claimOf[incidentId][msg.sender]=id;
+        emit ClaimSubmitted(id,incidentId,msg.sender,lossKey,requestedAmount,evidenceHash);
     }
     function approveClaim(uint256 id,uint256 amount) external onlyOwner live {
         Claim storage c=claims[id];Incident storage i=incidents[c.incidentId];require(c.state==State.Submitted && !i.closed && block.timestamp<i.reviewDeadline,"Review closed");

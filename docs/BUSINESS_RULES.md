@@ -7,11 +7,11 @@
 | Marketplace | `createListing`、`updateListing`、`buy`、`cancelListing`、`withdrawSellerCredit`；托管定价订单 |
 | AuctionHouse | `createAuction`、`bid`、`cancelAuction`、`settleAuction`、`claimNFT`、`withdrawRefund`；托管竞价和独立交付 |
 | FeeRouter | `setReserveOnce`、`depositFees`、`flushReserve`、`withdrawTreasury`；固定方向费用分账 |
-| RiskReserve | `deposit`、`openIncident`、`registerEntitlement`、`submitClaim`、`approveClaim`、`rejectClaim`、`claimPayout`、`closeIncident` |
+| RiskReserve | `deposit`、`openIncident`、`submitClaim`、`approveClaim`、`rejectClaim`、`claimPayout`、`closeIncident` |
 | LocalCouncil | 本地 2/3 提案、批准和执行，仅允许 chain ID 31337 |
-| DemoNFT | ERC-721 测试集合，发行者独占 `mint` 权限 |
+| DemoNFT | ERC-721 测试集合，发行者独占 `mint` / `mintBatch` 权限，一次最多 10 件 |
 
-完整参数、事件和错误见 `contracts/` 和 `src/contracts/` 中导出的 ABI。核心业务合约报告 `API_VERSION=2`，清单记录对应接口版本；这是兼容性检查值。
+完整参数、事件和错误见 `contracts/` 和 `src/contracts/` 中导出的 ABI。RiskReserve 报告 `API_VERSION=3`，其他业务合约为 2。清单的 `apiVersion=2` 表示清单格式；连接与部署校验按合约检查版本。旧部署需要重新部署，见 [申诉与铸造](CLAIMS_AND_MINTING.md)。
 
 ## 交易和拍卖
 
@@ -32,15 +32,15 @@
 1. 管理员注资，或将路由中的准备金份额入账。
 2. 多签登记事故：预算必须大于零且不超过可分配余额；政策摘要非零；申请截止在未来；审核截止晚于申请截止且不超过规则上限。
 3. 登记预算立即增加预留，减少可分配余额，总余额不变。
-4. 多签登记权益：事故仍开放、未到申请截止；受益人非零；唯一损失标识未用过；最大净损失大于零且不超过事故预算。
-5. 受益人在申请截止前提交非零证据摘要。
-6. 多签在审核截止前批准或拒绝。批准金额大于零、不超过最大净损失，且该事故累计批准不超过预算。
+4. 普通用户自主申诉：事故仍开放、未到申请截止；每个账户对同一事故限一次；申请金额大于零且不超过预算，正文和摘要均有效。管理员不能代用户发起。
+5. 提交直接建立待审核申请，受益人固定为发送者，无需预先登记资格。正文最多 1024 个 UTF-8 字节。
+6. 多签在审核截止前批准或拒绝。批准金额大于零、不超过用户申请金额，且该事故累计批准不超过预算。
 7. 受益人领取批准款项，总余额与预留同时减少。失败转账回滚，不能重复领取。
 8. 审核截止后管理员关闭事故，释放预算减累计批准的差额。已批准未领取的款项继续预留，关闭后仍能领取。
 
-权益登记不额外锁定准备金；批准时检查同一事故的累计金额。多个事故拥有各自预算，多个尚未执行的提案仍可能竞争当前可分配余额。签名数量不会绕过资金、状态和截止时间检查。
+提交申诉不额外锁定准备金；批准时检查同一事故的累计金额。多个事故拥有各自预算，多个尚未执行的提案仍可能竞争当前可分配余额。签名数量不会绕过资金、状态和截止时间检查。
 
-政策、证据和拒绝理由在前端计算 hash；正文应由测试/审核人员另行保存。合约不能独立证明实际损失真实性，不同文字描述同一损失需要人工去重。普通用户在管理员登记资格后申请，本版本没有自动建立任意索赔资格的通用申诉入口。
+政策和拒绝理由在前端计算 hash，正文另行保存。用户关联记录、原因和证据说明公开上链，并记录证据 hash。合约不能独立证明实际损失真实性，重复损失和多账户申请需人工审核。普通用户只可对已开放的事故自主申诉，提交不保证获赔。
 
 ## 管理与可维护性
 

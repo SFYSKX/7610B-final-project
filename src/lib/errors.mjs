@@ -9,6 +9,13 @@ const custom=new Interface([
  'error InsufficientBudget(uint256 requested,uint256 availableAmount)'
 ]);
 const reasons={
+ 'Administrators cannot submit claims':'管理员负责审核，不能发起申诉；请切换普通用户账户。',
+ 'Submission closed':'事故不存在、已关闭或已过申诉期限，请核对事故 ID 和截止时间。',
+ 'Already submitted':'当前账户已对这个事故提交过申诉，不能重复提交；请查看已有申诉状态。',
+ 'Invalid claim evidence':'请填写有效关联记录、证据和申诉正文；正文最多 1024 个 UTF-8 字节。',
+ 'Invalid claim amount':'申请金额必须大于零，且不能超过该事故预算。',
+ 'Invalid mint count':'铸造数量须为 1–10 的整数。',
+ 'Invalid asset':'接收地址必须非零，NFT 元数据 URI 不能超过 4096 字节。',
  'Bid too low':'报价过低，请至少达到当前最低出价。',
  'Invalid budget/policy':'事故预算必须大于零且不超过当前可分配准备金，政策说明不能为空。请先注资或归集手续费，再重新检查预算。',
  'Invalid deadlines':'申请截止时间必须晚于当前链上时间，审核截止必须更晚，且不超过一年。旧提案过期后需要重新发起。',
@@ -62,6 +69,7 @@ export function friendly(e,context={}){
  for(const x of all){for(const data of [x.data,x.data?.data,x.data?.result]){if(typeof data==='string')try{parsed=custom.parseError(data);if(parsed)break;}catch{}}if(parsed)break;}
  const name=parsed?.name||e?.revert?.name,args=parsed?.args||e?.revert?.args||[];
  if(name==='InsufficientBudget')return `准备金不足：本次预算 ${formatEther(args[0])} ETH，当前可分配 ${formatEther(args[1])} ETH。请先注资或归集手续费，再重试；批准票数不会增加余额。`;
+ if(name==='OwnableUnauthorizedAccount'&&['mint','mintBatch'].includes(context.method))return '当前账户不是此 NFT 集合的铸造者，请切换到 NFT owner 账户。平台管理员身份不等于铸造权限。';
  if(name==='ERC721InsufficientApproval')return `尚未授权给${context.method==='createAuction'?'拍卖市场 AuctionHouse':context.method==='createListing'?'交易市场 Marketplace':'本次操作所需的合约'}。请到“我的资产”选择对应授权用途并完成授权；两种市场的授权不能互相替代。`;
  const named={ERC721NonexistentToken:'此集合中不存在该 Token ID，请核对 NFT 合约地址和编号。',ERC721IncorrectOwner:'NFT 持有人已改变，请刷新并核对当前账户。',ERC721InvalidReceiver:'接收地址不能接收 NFT，请改用有效钱包地址。',OwnableUnauthorizedAccount:'此操作必须由管理多签批准并执行。',AdminOnly:'只有当前管理员可以执行此操作。',SettlementOnly:'仅专用自动结算服务或管理多签可以结算拍卖。',InvalidPolicy:'政策说明不能为空。',InvalidBudget:'事故预算必须大于零。'};
  if(named[name])return named[name];

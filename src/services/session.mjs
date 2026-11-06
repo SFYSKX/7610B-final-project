@@ -12,7 +12,7 @@ export async function connect(mode,index=3){
  const chainId=Number((await provider.getNetwork()).chainId);if(![31337,11155111].includes(chainId))throw Error('请选择本地链或 Sepolia');
  const config=localConfig||await loadDeployment(chainId);
  if(config.deploymentIdentity&&(await provider.getBlock(config.deploymentBlock))?.hash!==config.deploymentIdentity)throw Error('节点与部署清单不是同一次部署，请核对本地端口或钱包网络。');
- const contracts={};for(const n of ['Marketplace','AuctionHouse','RiskReserve','FeeRouter']){contracts[n]=new Contract(address(config.contracts[n]),ABIS[n],provider);if(await contracts[n].API_VERSION()!==2n||!same(await contracts[n].owner(),config.admin))throw Error(`${n} 合约版本或管理地址不匹配`);}
+ const contracts={};for(const n of ['Marketplace','AuctionHouse','RiskReserve','FeeRouter']){contracts[n]=new Contract(address(config.contracts[n]),ABIS[n],provider);if(await contracts[n].API_VERSION()!==(n==='RiskReserve'?3n:2n)||!same(await contracts[n].owner(),config.admin))throw Error(`${n} 合约版本或管理地址不匹配。用户申诉版要求 RiskReserve API 3，请连接本版本部署的平台。`);}
  if(chainId===31337&&config.adminMode==='LOCAL_COUNCIL')contracts.LocalCouncil=new Contract(config.admin,ABIS.LocalCouncil,provider);
  return {mode,provider,signer,account:await signer.getAddress(),chainId,config,contracts,accounts};
  }catch(e){provider.destroy();throw e;}
