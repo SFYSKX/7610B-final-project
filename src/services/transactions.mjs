@@ -41,6 +41,7 @@ export async function submitTransaction(request,ports) {
         const writer=contract.connect(current.signer).getFunction(method);
         await writer.staticCall(...args,options);
         await writer.estimateGas(...args,options);
+        if(getSession()!==current)throw Error('会话已切换，请重新连接并核验身份');
         onMessage('等待钱包签名…');
         const sent=await writer(...args,options);
         save({hash:sent.hash,nonce:sent.nonce,action:label,contract:contract.target});

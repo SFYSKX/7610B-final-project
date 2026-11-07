@@ -17,3 +17,23 @@ test('distinct failures have distinct natural Chinese messages',()=>{
 test('low-bid preflight reports latest minimum and refuses sending',async()=>{
  await assert.rejects(preflight({}, {getAuction:async()=>({highestBid:parseEther('.012'),reservePrice:parseEther('.01'),minIncrement:parseEther('.001')})},'bid',[1],{value:parseEther('.012')}),/0.013 ETH/);
 });
+
+test('login network errors distinguish wallet and local connections while transactions retain receipt advice',()=>{
+ const error=Error('身份核验失败',{cause:{code:'NETWORK_ERROR',message:'missing response'}});
+ const wallet=friendly(error,{action:'login',mode:'wallet'});
+ const local=friendly(error,{action:'login',mode:'local'});
+ assert.match(wallet,/MetaMask 当前网络的 RPC/);assert.match(wallet,/本地演示/);
+ assert.match(local,/npm run demo/);assert.match(local,/部署清单/);
+ for(const result of [wallet,local,friendly(Error('unknown error'),{action:'login'})]){
+  assert.match(result,/未发送交易/);assert.doesNotMatch(result,/核对回执|重复提交|待确认交易/);
+ }
+ assert.match(friendly(error),/先核对回执/);
+ assert.match(friendly({code:'TIMEOUT'},{action:'login',mode:'wallet'}),/RPC/);
+});
+
+test('cancelled and pending wallet connections do not show transaction signature advice',()=>{
+ assert.match(friendly({code:4001},{action:'login'}),/取消钱包连接/);
+ assert.match(friendly({info:{error:{code:-32002,message:'could not coalesce error'}}},{action:'login'}),/待处理的请求/);
+ assert.match(friendly({code:4001}),/取消钱包签名/);
+ assert.equal(friendly(Error('当前钱包没有本平台的管理员权限'),{action:'login'}),'当前钱包没有本平台的管理员权限');
+});

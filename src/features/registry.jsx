@@ -22,4 +22,12 @@ export const features=Object.freeze([
   {key:'claims',label:'我的申诉',order:'08',Component:MyClaims,dependencies:['reserve','identity'],userOnly:true},
   {key:'mint',label:'铸造管理',order:'09',Component:Mint,dependencies:['minting'],issuerOnly:true}
 ]);
-export const visibleFeatures=(isAdmin,isIssuer=false)=>features.filter(feature=>(!feature.adminOnly||isAdmin)&&(!feature.userOnly||!isAdmin)&&(!feature.issuerOnly||isIssuer));
+export function visibleFeatures(isAdmin,isIssuer=false,workspace=isAdmin?'admin':'user'){
+  const visible=features.filter(feature=>(!feature.adminOnly||(isAdmin&&workspace==='admin'))&&(!feature.userOnly||!isAdmin)&&(!feature.issuerOnly||isIssuer));
+  if(workspace!=='admin')return visible;
+  const priority=['admin','reserve','activity','history'];
+  return [...visible].sort((a,b)=>{
+    const rank=feature=>{const index=priority.indexOf(feature.key);return index<0?priority.length:index;};
+    return rank(a)-rank(b);
+  });
+}

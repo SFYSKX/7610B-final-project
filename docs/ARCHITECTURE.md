@@ -17,6 +17,9 @@ App / 会话与导航
 | 路径 | 责任 |
 |---|---|
 | `src/App.jsx` | 钱包事件、会话、导航、提示与任务组装 |
+| `src/components/Login.jsx` | 独立登录页、角色入口、钱包与本地演示连接控件 |
+| `src/lib/access.mjs` | 演示账户分组与基于最新身份快照的工作区准入 |
+| `src/services/login.mjs` | 连接后的同区块身份核验、超时拒绝和钱包账户/网络复核 |
 | `src/services/session.mjs` | 本地/钱包连接，网络、部署身份、API 版本和管理员检查 |
 | `src/hooks/useSnapshot.jsx` | 刷新生命周期，避免旧会话响应覆盖新账户 |
 | `src/services/queries/` | 市场、拍卖、准备金、资产、身份、提案、费用查询 |
@@ -44,11 +47,11 @@ App / 会话与导航
 
 页面写操作统一调用 `tx(label, contract, method, args, options)`。`submitTransaction(request, ports)` 通过注入的会话、存储、门闩、日志与刷新接口运行，便于测试替换依赖。顺序为：账户/网络确认 → 业务预检 → staticCall → estimateGas → 签名广播 → 保存哈希/nonce → 等待回执 → 刷新。业务页面不应绕过统一入口直接发送交易。
 
-功能注册项为 key、label、order、Component、dependencies 和可选 adminOnly。页面接收 s/data/tx/guarded/disabled，私有表单状态保留在模块内。`adminOnly` 只控制显示，链上合约必须自行检查权限。
+功能注册项为 key、label、order、Component、dependencies 和可选 adminOnly、userOnly、issuerOnly。`visibleFeatures` 根据实际身份、发行权和当前工作区筛选导航；管理员切换用户工作区不会改变实际身份。页面接收 s/data/tx/guarded/disabled，私有表单状态保留在模块内。前端筛选只控制显示，链上合约必须自行检查权限。
 
 ## 故障范围
 
-准备金读取失败时，准备金和依赖预算的管理页面受限，市场与拍卖可继续。市场读取失败时，资产页挂牌受限，但独立授权和资产查看可继续。身份未知时管理入口隐藏，按普通用户显示记录。页面渲染错误由该模块的错误边界处理。
+准备金读取失败时，准备金和依赖预算的管理页面受限，市场与拍卖可继续。市场读取失败时，资产页挂牌受限，但独立授权和资产查看可继续。身份未知时暂停整个工作区，重新核验成功后恢复；不能将未知身份当成普通用户放行。页面渲染错误由该模块的错误边界处理。
 
 RPC、钱包和 App 外壳属于共享依赖；首次连接需要所有核心合约版本和 owner 正确，所以不能保证任意故障都完全隔离。手续费路由、预算余额和交易资金也存在真实业务依赖。
 
